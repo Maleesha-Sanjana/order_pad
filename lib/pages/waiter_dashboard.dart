@@ -17,7 +17,7 @@ class WaiterDashboard extends StatefulWidget {
 class _WaiterDashboardState extends State<WaiterDashboard> {
   final TextEditingController _searchController = TextEditingController();
   bool _isMenuMode = true; // true for menu, false for orders
-  
+
   // Mock table data
   final List<Map<String, dynamic>> _tables = [
     {'id': 1, 'number': 'Table 1', 'isPaid': false, 'total': 1250, 'items': 3},
@@ -54,24 +54,24 @@ class _WaiterDashboardState extends State<WaiterDashboard> {
 
     return Scaffold(
       floatingActionButton: cart.isEmpty
-        ? null
-        : Container(
-            margin: const EdgeInsets.all(16),
-            child: FloatingActionButton.extended(
-              onPressed: () => _showFullscreenTable(context, cart, theme),
-              backgroundColor: theme.colorScheme.primary,
-              foregroundColor: theme.colorScheme.onPrimary,
-              elevation: 8,
-              shape: RoundedRectangleBorder(
-                borderRadius: BorderRadius.circular(16),
-              ),
-              icon: const Icon(Icons.check_rounded),
-              label: const Text(
-                'Confirm Order',
-                style: TextStyle(fontWeight: FontWeight.w600),
+          ? null
+          : Container(
+              margin: const EdgeInsets.all(16),
+              child: FloatingActionButton.extended(
+                onPressed: () => _showFullscreenTable(context, cart, theme),
+                backgroundColor: theme.colorScheme.primary,
+                foregroundColor: theme.colorScheme.onPrimary,
+                elevation: 8,
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(16),
+                ),
+                icon: const Icon(Icons.check_rounded),
+                label: const Text(
+                  'Confirm Order',
+                  style: TextStyle(fontWeight: FontWeight.w600),
+                ),
               ),
             ),
-          ),
       body: Container(
         decoration: BoxDecoration(
           gradient: LinearGradient(
@@ -217,7 +217,7 @@ class _WaiterDashboardState extends State<WaiterDashboard> {
                                 'Current Order',
                                 style: theme.textTheme.titleLarge?.copyWith(
                                   fontWeight: FontWeight.bold,
-                color: theme.colorScheme.primary,
+                                  color: theme.colorScheme.primary,
                                 ),
                               ),
                               if (!cart.isEmpty)
@@ -501,11 +501,11 @@ class _WaiterDashboardState extends State<WaiterDashboard> {
                           });
                         },
                         style: ElevatedButton.styleFrom(
-                          backgroundColor: _isMenuMode 
-                              ? theme.colorScheme.primary 
+                          backgroundColor: _isMenuMode
+                              ? theme.colorScheme.primary
                               : theme.colorScheme.surface,
-                          foregroundColor: _isMenuMode 
-                              ? theme.colorScheme.onPrimary 
+                          foregroundColor: _isMenuMode
+                              ? theme.colorScheme.onPrimary
                               : theme.colorScheme.onSurface,
                           elevation: _isMenuMode ? 4 : 1,
                           padding: const EdgeInsets.symmetric(vertical: 12),
@@ -516,10 +516,7 @@ class _WaiterDashboardState extends State<WaiterDashboard> {
                         child: Row(
                           mainAxisAlignment: MainAxisAlignment.center,
                           children: [
-                            Icon(
-                              Icons.restaurant_menu_rounded,
-                              size: 18,
-                            ),
+                            Icon(Icons.restaurant_menu_rounded, size: 18),
                             const SizedBox(width: 8),
                             const Text('Menu'),
                           ],
@@ -535,11 +532,11 @@ class _WaiterDashboardState extends State<WaiterDashboard> {
                           });
                         },
                         style: ElevatedButton.styleFrom(
-                          backgroundColor: !_isMenuMode 
-                              ? theme.colorScheme.primary 
+                          backgroundColor: !_isMenuMode
+                              ? theme.colorScheme.primary
                               : theme.colorScheme.surface,
-                          foregroundColor: !_isMenuMode 
-                              ? theme.colorScheme.onPrimary 
+                          foregroundColor: !_isMenuMode
+                              ? theme.colorScheme.onPrimary
                               : theme.colorScheme.onSurface,
                           elevation: !_isMenuMode ? 4 : 1,
                           padding: const EdgeInsets.symmetric(vertical: 12),
@@ -550,10 +547,7 @@ class _WaiterDashboardState extends State<WaiterDashboard> {
                         child: Row(
                           mainAxisAlignment: MainAxisAlignment.center,
                           children: [
-                            Icon(
-                              Icons.table_restaurant_rounded,
-                              size: 18,
-                            ),
+                            Icon(Icons.table_restaurant_rounded, size: 18),
                             const SizedBox(width: 8),
                             const Text('Orders'),
                           ],
@@ -620,8 +614,9 @@ class _WaiterDashboardState extends State<WaiterDashboard> {
               ],
               const SizedBox(height: 4),
               // Navigation Breadcrumb (only show in menu mode)
-              if (_isMenuMode && (menu.selectedDepartmentId != null ||
-                  menu.selectedSubDepartmentId != null)) ...[
+              if (_isMenuMode &&
+                  (menu.selectedDepartmentId != null ||
+                      menu.selectedSubDepartmentId != null)) ...[
                 Container(
                   margin: const EdgeInsets.fromLTRB(16, 0, 16, 0),
                   padding: const EdgeInsets.symmetric(
@@ -750,29 +745,30 @@ class _WaiterDashboardState extends State<WaiterDashboard> {
               const SizedBox(height: 4),
               // Content Section
               Expanded(
-                child: _isMenuMode 
+                child: _isMenuMode
                     ? (menu.loading
-                        ? Center(
-                            child: Column(
-                              mainAxisAlignment: MainAxisAlignment.center,
-                              children: [
-                                CircularProgressIndicator(
-                                  color: theme.colorScheme.primary,
-                                ),
-                                const SizedBox(height: 16),
-                                Text(
-                                  'Loading menu...',
-                                  style: theme.textTheme.bodyLarge?.copyWith(
-                                    color: theme.colorScheme.outline,
+                          ? Center(
+                              child: Column(
+                                mainAxisAlignment: MainAxisAlignment.center,
+                                children: [
+                                  CircularProgressIndicator(
+                                    color: theme.colorScheme.primary,
                                   ),
-                                ),
-                              ],
-                            ),
-                          )
-                        : _buildContent(theme, menu))
+                                  const SizedBox(height: 16),
+                                  Text(
+                                    'Loading menu...',
+                                    style: theme.textTheme.bodyLarge?.copyWith(
+                                      color: theme.colorScheme.outline,
+                                    ),
+                                  ),
+                                ],
+                              ),
+                            )
+                          : _buildContent(theme, menu))
                     : _buildOrdersView(theme),
               ),
-          ],
+            ],
+          ),
         ),
       ),
     );
@@ -791,10 +787,10 @@ class _WaiterDashboardState extends State<WaiterDashboard> {
       pageBuilder: (context, animation, secondaryAnimation) {
         return Material(
           color: Colors.transparent,
-                      child: Container(
+          child: Container(
             width: double.infinity,
             height: double.infinity,
-                        decoration: BoxDecoration(
+            decoration: BoxDecoration(
               gradient: LinearGradient(
                 begin: Alignment.topCenter,
                 end: Alignment.bottomCenter,
@@ -811,7 +807,7 @@ class _WaiterDashboardState extends State<WaiterDashboard> {
                   Container(
                     padding: const EdgeInsets.all(20),
                     decoration: BoxDecoration(
-                            color: Colors.white,
+                      color: Colors.white,
                       boxShadow: [
                         BoxShadow(
                           color: Colors.black.withOpacity(0.1),
@@ -941,7 +937,7 @@ class _WaiterDashboardState extends State<WaiterDashboard> {
                                         flex: 1,
                                         child: Text(
                                           '${index + 1}',
-                          textAlign: TextAlign.center,
+                                          textAlign: TextAlign.center,
                                           style: const TextStyle(fontSize: 11),
                                         ),
                                       ),
@@ -1014,11 +1010,11 @@ class _WaiterDashboardState extends State<WaiterDashboard> {
                                                   BorderRadius.circular(8),
                                             ),
                                             padding: const EdgeInsets.all(8),
-                        ),
-                      ),
-                    ),
-                ],
-              ),
+                                          ),
+                                        ),
+                                      ),
+                                    ],
+                                  ),
                                 );
                               },
                             ),
@@ -1125,181 +1121,185 @@ class _WaiterDashboardState extends State<WaiterDashboard> {
 
     showDialog(
       context: context,
-      builder: (context) => AlertDialog(
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
-        title: Row(
-          children: [
-            Icon(
-              Icons.restaurant_rounded,
-              color: theme.colorScheme.primary,
-              size: 28,
-            ),
-            const SizedBox(width: 12),
-            const Text('Order Details'),
-          ],
-        ),
-        content: SizedBox(
-          width: 400,
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
+      builder: (context) => StatefulBuilder(
+        builder: (context, setState) => AlertDialog(
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(20),
+          ),
+          title: Row(
             children: [
-              const Text(
-                'Please provide the following details to complete the order:',
-                style: TextStyle(fontSize: 14),
+              Icon(
+                Icons.restaurant_rounded,
+                color: theme.colorScheme.primary,
+                size: 28,
               ),
-              const SizedBox(height: 20),
-              // Seat Number Input
-              TextField(
-                controller: seatController,
-                decoration: InputDecoration(
-                  labelText: 'Seat Number *',
-                  hintText: 'e.g., Table 5, Seat 2',
-                  prefixIcon: Icon(
-                    Icons.chair_rounded,
-                    color: theme.colorScheme.primary,
-                  ),
-                  border: OutlineInputBorder(
-                    borderRadius: BorderRadius.circular(12),
-                  ),
-                  filled: true,
-                  fillColor: theme.colorScheme.surface,
-                ),
-                keyboardType: TextInputType.text,
-              ),
-              const SizedBox(height: 16),
-              // Remarks/Special Requests Input
-              TextField(
-                controller: remarksController,
-                decoration: InputDecoration(
-                  labelText: 'Special Requests / Remarks',
-                  hintText: 'e.g., No spice, Extra sauce, etc.',
-                  prefixIcon: Icon(
-                    Icons.note_rounded,
-                    color: theme.colorScheme.primary,
-                  ),
-                  border: OutlineInputBorder(
-                    borderRadius: BorderRadius.circular(12),
-                  ),
-                  filled: true,
-                  fillColor: theme.colorScheme.surface,
-                ),
-                maxLines: 3,
-                keyboardType: TextInputType.multiline,
-              ),
-              const SizedBox(height: 16),
-              // Order Summary
-              Container(
-                padding: const EdgeInsets.all(12),
-                decoration: BoxDecoration(
-                  color: theme.colorScheme.primary.withOpacity(0.1),
-                  borderRadius: BorderRadius.circular(12),
-                ),
-                child: Row(
-                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                  children: [
-                    Text(
-                      'Total Amount:',
-                      style: TextStyle(
-                        fontWeight: FontWeight.w600,
-                        color: theme.colorScheme.primary,
-                      ),
-                    ),
-                    Text(
-                      'Rs.${cart.total.toStringAsFixed(0)}',
-                      style: TextStyle(
-                        fontWeight: FontWeight.bold,
-                        fontSize: 16,
-                        color: theme.colorScheme.primary,
-                      ),
-                    ),
-                  ],
-                ),
-              ),
+              const SizedBox(width: 12),
+              const Text('Order Details'),
             ],
           ),
-        ),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.of(context).pop(),
-            child: const Text('Cancel'),
-          ),
-          ElevatedButton(
-            onPressed: () {
-              if (seatController.text.trim().isEmpty) {
-                ScaffoldMessenger.of(context).showSnackBar(
-                  const SnackBar(
-                    content: Text('Please enter seat number'),
-                    backgroundColor: Colors.red,
+          content: SizedBox(
+            width: 400,
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                const Text(
+                  'Please provide the following details to complete the order:',
+                  style: TextStyle(fontSize: 14),
+                ),
+                const SizedBox(height: 20),
+                // Seat Number Input
+                TextField(
+                  controller: seatController,
+                  decoration: InputDecoration(
+                    labelText: 'Seat Number *',
+                    hintText: 'e.g., Table 5, Seat 2',
+                    prefixIcon: Icon(
+                      Icons.chair_rounded,
+                      color: theme.colorScheme.primary,
+                    ),
+                    border: OutlineInputBorder(
+                      borderRadius: BorderRadius.circular(12),
+                    ),
+                    filled: true,
+                    fillColor: theme.colorScheme.surface,
                   ),
-                );
-                return;
-              }
-
-              // Here you can save the order with seat number and remarks
-              // For now, we'll just show a success message
-              Navigator.of(context).pop();
-
-              // Show success dialog
-              showDialog(
-                context: context,
-                builder: (context) => AlertDialog(
-                  shape: RoundedRectangleBorder(
-                    borderRadius: BorderRadius.circular(20),
+                  keyboardType: TextInputType.text,
+                ),
+                const SizedBox(height: 16),
+                // Remarks/Special Requests Input
+                TextField(
+                  controller: remarksController,
+                  decoration: InputDecoration(
+                    labelText: 'Special Requests / Remarks',
+                    hintText: 'e.g., No spice, Extra sauce, etc.',
+                    prefixIcon: Icon(
+                      Icons.note_rounded,
+                      color: theme.colorScheme.primary,
+                    ),
+                    border: OutlineInputBorder(
+                      borderRadius: BorderRadius.circular(12),
+                    ),
+                    filled: true,
+                    fillColor: theme.colorScheme.surface,
                   ),
-                  title: Row(
+                  maxLines: 3,
+                  keyboardType: TextInputType.multiline,
+                ),
+                const SizedBox(height: 16),
+                // Order Summary
+                Container(
+                  padding: const EdgeInsets.all(12),
+                  decoration: BoxDecoration(
+                    color: theme.colorScheme.primary.withOpacity(0.1),
+                    borderRadius: BorderRadius.circular(12),
+                  ),
+                  child: Row(
+                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
                     children: [
-                      Icon(
-                        Icons.check_circle_rounded,
-                        color: theme.colorScheme.primary,
-                        size: 28,
+                      Text(
+                        'Total Amount:',
+                        style: TextStyle(
+                          fontWeight: FontWeight.w600,
+                          color: theme.colorScheme.primary,
+                        ),
                       ),
-                      const SizedBox(width: 12),
-                      const Text('Order Confirmed!'),
+                      Text(
+                        'Rs.${cart.total.toStringAsFixed(0)}',
+                        style: TextStyle(
+                          fontWeight: FontWeight.bold,
+                          fontSize: 16,
+                          color: theme.colorScheme.primary,
+                        ),
+                      ),
                     ],
                   ),
-                  content: Column(
-                    mainAxisSize: MainAxisSize.min,
-                    children: [
-                      const Text(
-                        'Your order has been sent to the kitchen successfully.',
-                      ),
-                      const SizedBox(height: 12),
-                      Text(
-                        'Seat: ${seatController.text.trim()}',
-                        style: const TextStyle(fontWeight: FontWeight.w600),
-                      ),
-                      if (remarksController.text.trim().isNotEmpty) ...[
-                        const SizedBox(height: 8),
+                ),
+              ],
+            ),
+          ),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.of(context).pop(),
+              child: const Text('Cancel'),
+            ),
+            ElevatedButton(
+              onPressed: () {
+                if (seatController.text.trim().isEmpty) {
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    const SnackBar(
+                      content: Text('Please enter seat number'),
+                      backgroundColor: Colors.red,
+                    ),
+                  );
+                  return;
+                }
+
+                // Here you can save the order with seat number and remarks
+                // For now, we'll just show a success message
+                Navigator.of(context).pop();
+
+                // Show success dialog
+                showDialog(
+                  context: context,
+                  builder: (context) => AlertDialog(
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(20),
+                    ),
+                    title: Row(
+                      children: [
+                        Icon(
+                          Icons.check_circle_rounded,
+                          color: theme.colorScheme.primary,
+                          size: 28,
+                        ),
+                        const SizedBox(width: 12),
+                        const Text('Order Confirmed!'),
+                      ],
+                    ),
+                    content: Column(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        const Text(
+                          'Your order has been sent to the kitchen successfully.',
+                        ),
+                        const SizedBox(height: 12),
                         Text(
-                          'Remarks: ${remarksController.text.trim()}',
+                          'Seat: ${seatController.text.trim()}',
                           style: const TextStyle(fontWeight: FontWeight.w600),
                         ),
+                        if (remarksController.text.trim().isNotEmpty) ...[
+                          const SizedBox(height: 8),
+                          Text(
+                            'Remarks: ${remarksController.text.trim()}',
+                            style: const TextStyle(fontWeight: FontWeight.w600),
+                          ),
+                        ],
                       ],
+                    ),
+                    actions: [
+                      ElevatedButton(
+                        onPressed: () {
+                          // Clear the cart after order confirmation
+                          cart.clearCart();
+                          Navigator.of(context).pop();
+                        },
+                        child: const Text('OK'),
+                      ),
                     ],
                   ),
-                  actions: [
-                    ElevatedButton(
-                      onPressed: () {
-                        // Clear the cart after order confirmation
-                        cart.clearCart();
-                        Navigator.of(context).pop();
-                      },
-                      child: const Text('OK'),
-                    ),
-                  ],
+                );
+              },
+              style: ElevatedButton.styleFrom(
+                backgroundColor: theme.colorScheme.primary,
+                foregroundColor: theme.colorScheme.onPrimary,
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(12),
                 ),
-              );
-            },
-            style: ElevatedButton.styleFrom(
-              backgroundColor: theme.colorScheme.primary,
-              foregroundColor: theme.colorScheme.onPrimary,
-              shape: RoundedRectangleBorder(
-                borderRadius: BorderRadius.circular(12),
               ),
+              child: const Text('Confirm Order'),
             ),
-            child: const Text('Confirm Order'),
-          ),
-        ],
+          ],
+        ),
       ),
     );
   }
@@ -1347,26 +1347,31 @@ class _WaiterDashboardState extends State<WaiterDashboard> {
                 final isPaid = table['isPaid'] as bool;
                 final total = table['total'] as int;
                 final items = table['items'] as int;
-                
+
                 return GestureDetector(
-                  onTap: isPaid ? null : () => _showTableDetails(context, theme, table),
+                  onTap: isPaid
+                      ? null
+                      : () => _showTableDetails(context, theme, table),
                   child: Container(
                     decoration: BoxDecoration(
                       gradient: LinearGradient(
                         begin: Alignment.topLeft,
                         end: Alignment.bottomRight,
-                        colors: isPaid 
+                        colors: isPaid
                             ? [Colors.green.shade100, Colors.green.shade50]
                             : [Colors.red.shade100, Colors.red.shade50],
                       ),
                       borderRadius: BorderRadius.circular(20),
                       border: Border.all(
-                        color: isPaid ? Colors.green.shade400 : Colors.red.shade400,
+                        color: isPaid
+                            ? Colors.green.shade400
+                            : Colors.red.shade400,
                         width: 3,
                       ),
                       boxShadow: [
                         BoxShadow(
-                          color: (isPaid ? Colors.green : Colors.red).withOpacity(0.3),
+                          color: (isPaid ? Colors.green : Colors.red)
+                              .withOpacity(0.3),
                           blurRadius: 12,
                           offset: const Offset(0, 6),
                         ),
@@ -1378,18 +1383,23 @@ class _WaiterDashboardState extends State<WaiterDashboard> {
                         Container(
                           padding: const EdgeInsets.all(12),
                           decoration: BoxDecoration(
-                            color: isPaid ? Colors.green.shade600 : Colors.red.shade600,
+                            color: isPaid
+                                ? Colors.green.shade600
+                                : Colors.red.shade600,
                             shape: BoxShape.circle,
                             boxShadow: [
                               BoxShadow(
-                                color: (isPaid ? Colors.green : Colors.red).withOpacity(0.3),
+                                color: (isPaid ? Colors.green : Colors.red)
+                                    .withOpacity(0.3),
                                 blurRadius: 8,
                                 offset: const Offset(0, 4),
                               ),
                             ],
                           ),
                           child: Icon(
-                            isPaid ? Icons.check_circle_rounded : Icons.restaurant_rounded,
+                            isPaid
+                                ? Icons.check_circle_rounded
+                                : Icons.restaurant_rounded,
                             size: 28,
                             color: Colors.white,
                           ),
@@ -1400,14 +1410,21 @@ class _WaiterDashboardState extends State<WaiterDashboard> {
                           style: TextStyle(
                             fontSize: 18,
                             fontWeight: FontWeight.bold,
-                            color: isPaid ? Colors.green.shade800 : Colors.red.shade800,
+                            color: isPaid
+                                ? Colors.green.shade800
+                                : Colors.red.shade800,
                           ),
                         ),
                         const SizedBox(height: 6),
                         Container(
-                          padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 4),
+                          padding: const EdgeInsets.symmetric(
+                            horizontal: 12,
+                            vertical: 4,
+                          ),
                           decoration: BoxDecoration(
-                            color: isPaid ? Colors.green.shade600 : Colors.red.shade600,
+                            color: isPaid
+                                ? Colors.green.shade600
+                                : Colors.red.shade600,
                             borderRadius: BorderRadius.circular(12),
                           ),
                           child: Text(
@@ -1423,7 +1440,10 @@ class _WaiterDashboardState extends State<WaiterDashboard> {
                         if (!isPaid && total > 0) ...[
                           const SizedBox(height: 8),
                           Container(
-                            padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                            padding: const EdgeInsets.symmetric(
+                              horizontal: 8,
+                              vertical: 4,
+                            ),
                             decoration: BoxDecoration(
                               color: Colors.red.shade50,
                               borderRadius: BorderRadius.circular(8),
@@ -1463,9 +1483,13 @@ class _WaiterDashboardState extends State<WaiterDashboard> {
     );
   }
 
-  void _showTableDetails(BuildContext context, ThemeData theme, Map<String, dynamic> table) {
+  void _showTableDetails(
+    BuildContext context,
+    ThemeData theme,
+    Map<String, dynamic> table,
+  ) {
     final cart = context.read<CartProvider>();
-    
+
     showDialog(
       context: context,
       builder: (context) => AlertDialog(
@@ -1560,7 +1584,7 @@ class _WaiterDashboardState extends State<WaiterDashboard> {
                 ),
               ),
               const SizedBox(height: 16),
-              
+
               // Order Details Section
               if (cart.isEmpty) ...[
                 Container(
@@ -1568,7 +1592,9 @@ class _WaiterDashboardState extends State<WaiterDashboard> {
                   decoration: BoxDecoration(
                     color: theme.colorScheme.surface,
                     borderRadius: BorderRadius.circular(12),
-                    border: Border.all(color: theme.colorScheme.outline.withOpacity(0.2)),
+                    border: Border.all(
+                      color: theme.colorScheme.outline.withOpacity(0.2),
+                    ),
                   ),
                   child: Column(
                     children: [
@@ -1602,7 +1628,9 @@ class _WaiterDashboardState extends State<WaiterDashboard> {
                   decoration: BoxDecoration(
                     color: theme.colorScheme.surface,
                     borderRadius: BorderRadius.circular(12),
-                    border: Border.all(color: theme.colorScheme.outline.withOpacity(0.2)),
+                    border: Border.all(
+                      color: theme.colorScheme.outline.withOpacity(0.2),
+                    ),
                   ),
                   child: Column(
                     children: [
@@ -1620,8 +1648,14 @@ class _WaiterDashboardState extends State<WaiterDashboard> {
                           children: [
                             Expanded(flex: 2, child: _buildTableHeader('Item')),
                             Expanded(flex: 1, child: _buildTableHeader('Qty')),
-                            Expanded(flex: 1, child: _buildTableHeader('Price')),
-                            Expanded(flex: 1, child: _buildTableHeader('Total')),
+                            Expanded(
+                              flex: 1,
+                              child: _buildTableHeader('Price'),
+                            ),
+                            Expanded(
+                              flex: 1,
+                              child: _buildTableHeader('Total'),
+                            ),
                           ],
                         ),
                       ),
@@ -1632,11 +1666,15 @@ class _WaiterDashboardState extends State<WaiterDashboard> {
                           itemBuilder: (context, index) {
                             final item = cart.items[index];
                             return Container(
-                              padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                              padding: const EdgeInsets.symmetric(
+                                horizontal: 12,
+                                vertical: 8,
+                              ),
                               decoration: BoxDecoration(
                                 border: Border(
                                   top: BorderSide(
-                                    color: theme.colorScheme.outline.withOpacity(0.1),
+                                    color: theme.colorScheme.outline
+                                        .withOpacity(0.1),
                                   ),
                                 ),
                               ),
@@ -1670,7 +1708,10 @@ class _WaiterDashboardState extends State<WaiterDashboard> {
                                     child: Text(
                                       'Rs.${item.totalPrice.toStringAsFixed(0)}',
                                       textAlign: TextAlign.right,
-                                      style: const TextStyle(fontSize: 12, fontWeight: FontWeight.w600),
+                                      style: const TextStyle(
+                                        fontSize: 12,
+                                        fontWeight: FontWeight.w600,
+                                      ),
                                     ),
                                   ),
                                 ],
@@ -1808,18 +1849,18 @@ class _WaiterDashboardState extends State<WaiterDashboard> {
       ),
       child: Material(
         color: Colors.transparent,
-      child: InkWell(
-        onTap: () => menu.selectDepartment(department.id),
+        child: InkWell(
+          onTap: () => menu.selectDepartment(department.id),
           borderRadius: BorderRadius.circular(20),
-        child: Padding(
+          child: Padding(
             padding: const EdgeInsets.all(24),
-          child: Row(
-            children: [
-              // Department Icon
-              Container(
+            child: Row(
+              children: [
+                // Department Icon
+                Container(
                   width: 70,
                   height: 70,
-                decoration: BoxDecoration(
+                  decoration: BoxDecoration(
                     gradient: LinearGradient(
                       begin: Alignment.topLeft,
                       end: Alignment.bottomRight,
@@ -1836,40 +1877,40 @@ class _WaiterDashboardState extends State<WaiterDashboard> {
                         offset: const Offset(0, 4),
                       ),
                     ],
-                ),
-                child: Center(
-                  child: Text(
-                    department.icon ?? '🍽️',
+                  ),
+                  child: Center(
+                    child: Text(
+                      department.icon ?? '🍽️',
                       style: const TextStyle(fontSize: 28),
+                    ),
                   ),
                 ),
-              ),
                 const SizedBox(width: 20),
-              // Department Info
-              Expanded(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text(
-                      department.name,
-                      style: theme.textTheme.titleLarge?.copyWith(
-                        fontWeight: FontWeight.bold,
-                          color: theme.colorScheme.onSurface,
-                      ),
-                    ),
-                    if (department.description != null) ...[
-                        const SizedBox(height: 6),
+                // Department Info
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
                       Text(
-                        department.description!,
-                        style: theme.textTheme.bodyMedium?.copyWith(
-                          color: theme.colorScheme.onSurface.withOpacity(0.7),
-                            height: 1.4,
+                        department.name,
+                        style: theme.textTheme.titleLarge?.copyWith(
+                          fontWeight: FontWeight.bold,
+                          color: theme.colorScheme.onSurface,
                         ),
                       ),
+                      if (department.description != null) ...[
+                        const SizedBox(height: 6),
+                        Text(
+                          department.description!,
+                          style: theme.textTheme.bodyMedium?.copyWith(
+                            color: theme.colorScheme.onSurface.withOpacity(0.7),
+                            height: 1.4,
+                          ),
+                        ),
+                      ],
                     ],
-                  ],
+                  ),
                 ),
-              ),
                 Container(
                   padding: const EdgeInsets.all(8),
                   decoration: BoxDecoration(
@@ -1926,18 +1967,18 @@ class _WaiterDashboardState extends State<WaiterDashboard> {
       ),
       child: Material(
         color: Colors.transparent,
-      child: InkWell(
-        onTap: () => menu.selectSubDepartment(subDepartment.id),
+        child: InkWell(
+          onTap: () => menu.selectSubDepartment(subDepartment.id),
           borderRadius: BorderRadius.circular(18),
-        child: Padding(
-          padding: const EdgeInsets.all(20),
-          child: Row(
-            children: [
-              // Sub-Department Icon
-              Container(
+          child: Padding(
+            padding: const EdgeInsets.all(20),
+            child: Row(
+              children: [
+                // Sub-Department Icon
+                Container(
                   width: 60,
                   height: 60,
-                decoration: BoxDecoration(
+                  decoration: BoxDecoration(
                     gradient: LinearGradient(
                       begin: Alignment.topLeft,
                       end: Alignment.bottomRight,
@@ -1954,40 +1995,40 @@ class _WaiterDashboardState extends State<WaiterDashboard> {
                         offset: const Offset(0, 3),
                       ),
                     ],
-                ),
-                child: Center(
-                  child: Text(
-                    subDepartment.icon ?? '🍽️',
+                  ),
+                  child: Center(
+                    child: Text(
+                      subDepartment.icon ?? '🍽️',
                       style: const TextStyle(fontSize: 24),
+                    ),
                   ),
                 ),
-              ),
                 const SizedBox(width: 18),
-              // Sub-Department Info
-              Expanded(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text(
-                      subDepartment.name,
-                      style: theme.textTheme.titleMedium?.copyWith(
-                        fontWeight: FontWeight.bold,
-                          color: theme.colorScheme.onSurface,
-                      ),
-                    ),
-                    if (subDepartment.description != null) ...[
-                      const SizedBox(height: 4),
+                // Sub-Department Info
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
                       Text(
-                        subDepartment.description!,
-                        style: theme.textTheme.bodySmall?.copyWith(
-                          color: theme.colorScheme.onSurface.withOpacity(0.7),
-                            height: 1.3,
+                        subDepartment.name,
+                        style: theme.textTheme.titleMedium?.copyWith(
+                          fontWeight: FontWeight.bold,
+                          color: theme.colorScheme.onSurface,
                         ),
                       ),
+                      if (subDepartment.description != null) ...[
+                        const SizedBox(height: 4),
+                        Text(
+                          subDepartment.description!,
+                          style: theme.textTheme.bodySmall?.copyWith(
+                            color: theme.colorScheme.onSurface.withOpacity(0.7),
+                            height: 1.3,
+                          ),
+                        ),
+                      ],
                     ],
-                  ],
+                  ),
                 ),
-              ),
                 Container(
                   padding: const EdgeInsets.all(6),
                   decoration: BoxDecoration(
@@ -2146,14 +2187,14 @@ class _WaiterDashboardState extends State<WaiterDashboard> {
                     ),
                     child: Row(
                       mainAxisSize: MainAxisSize.min,
-                    children: [
-                      IconButton(
-                        onPressed: () =>
-                            cart.updateQuantity(foodItem, quantity - 1),
+                      children: [
+                        IconButton(
+                          onPressed: () =>
+                              cart.updateQuantity(foodItem, quantity - 1),
                           icon: Icon(
                             Icons.remove_rounded,
-                        color: theme.colorScheme.error,
-                      ),
+                            color: theme.colorScheme.error,
+                          ),
                           style: IconButton.styleFrom(
                             backgroundColor: Colors.white,
                             shape: RoundedRectangleBorder(
@@ -2164,19 +2205,19 @@ class _WaiterDashboardState extends State<WaiterDashboard> {
                         Padding(
                           padding: const EdgeInsets.symmetric(horizontal: 12),
                           child: Text(
-                        '$quantity',
-                        style: theme.textTheme.titleMedium?.copyWith(
-                          fontWeight: FontWeight.bold,
+                            '$quantity',
+                            style: theme.textTheme.titleMedium?.copyWith(
+                              fontWeight: FontWeight.bold,
                               color: theme.colorScheme.primary,
                             ),
+                          ),
                         ),
-                      ),
-                      IconButton(
-                        onPressed: () =>
-                            cart.updateQuantity(foodItem, quantity + 1),
+                        IconButton(
+                          onPressed: () =>
+                              cart.updateQuantity(foodItem, quantity + 1),
                           icon: Icon(
                             Icons.add_rounded,
-                        color: theme.colorScheme.primary,
+                            color: theme.colorScheme.primary,
                           ),
                           style: IconButton.styleFrom(
                             backgroundColor: Colors.white,
@@ -2259,21 +2300,21 @@ class _WaiterDashboardState extends State<WaiterDashboard> {
             width: 8,
             height: 8,
             decoration: BoxDecoration(
-          color: isAvailable
-              ? theme.colorScheme.primary
-              : theme.colorScheme.outline,
+              color: isAvailable
+                  ? theme.colorScheme.primary
+                  : theme.colorScheme.outline,
               shape: BoxShape.circle,
-        ),
-      ),
+            ),
+          ),
           const SizedBox(width: 8),
           Text(
-        label,
-        style: theme.textTheme.bodySmall?.copyWith(
-          color: isAvailable
-              ? theme.colorScheme.primary
-              : theme.colorScheme.outline,
+            label,
+            style: theme.textTheme.bodySmall?.copyWith(
+              color: isAvailable
+                  ? theme.colorScheme.primary
+                  : theme.colorScheme.outline,
               fontWeight: FontWeight.w600,
-        ),
+            ),
           ),
         ],
       ),
