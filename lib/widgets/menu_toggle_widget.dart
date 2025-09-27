@@ -3,11 +3,13 @@ import 'package:flutter/material.dart';
 class MenuToggleWidget extends StatelessWidget {
   final bool isMenuMode;
   final ValueChanged<bool> onToggle;
+  final bool isRoomService;
 
   const MenuToggleWidget({
     super.key,
     required this.isMenuMode,
     required this.onToggle,
+    this.isRoomService = false,
   });
 
   @override
@@ -64,9 +66,14 @@ class MenuToggleWidget extends StatelessWidget {
               child: Row(
                 mainAxisAlignment: MainAxisAlignment.center,
                 children: [
-                  Icon(Icons.table_restaurant_rounded, size: 18),
+                  Icon(
+                    isRoomService 
+                        ? Icons.hotel_rounded 
+                        : Icons.table_restaurant_rounded, 
+                    size: 18
+                  ),
                   const SizedBox(width: 8),
-                  const Text('Orders'),
+                  Text(isRoomService ? 'Room Service' : 'Orders'),
                 ],
               ),
             ),

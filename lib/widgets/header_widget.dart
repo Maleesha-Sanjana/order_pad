@@ -70,7 +70,38 @@ class HeaderWidget extends StatelessWidget {
                   size: 24,
                 ),
               ),
-              const SizedBox(width: 8),
+              const SizedBox(width: 12),
+              // Company Logo
+              Container(
+                height: 40,
+                width: 40,
+                decoration: BoxDecoration(
+                  color: Colors.white,
+                  borderRadius: BorderRadius.circular(8),
+                  boxShadow: [
+                    BoxShadow(
+                      color: Colors.black.withOpacity(0.1),
+                      blurRadius: 4,
+                      offset: const Offset(0, 2),
+                    ),
+                  ],
+                ),
+                child: ClipRRect(
+                  borderRadius: BorderRadius.circular(8),
+                  child: Image.asset(
+                    'assets/jazz.png',
+                    fit: BoxFit.contain,
+                    errorBuilder: (context, error, stackTrace) {
+                      return Icon(
+                        Icons.business,
+                        color: theme.colorScheme.primary,
+                        size: 24,
+                      );
+                    },
+                  ),
+                ),
+              ),
+              const SizedBox(width: 12),
               IconButton(
                 onPressed: () async {
                   await auth.logout();
