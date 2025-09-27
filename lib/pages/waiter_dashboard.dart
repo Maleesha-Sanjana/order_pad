@@ -9,6 +9,7 @@ import '../widgets/search_bar_widget.dart';
 import '../widgets/breadcrumb_widget.dart';
 import '../widgets/content_widget.dart';
 import '../widgets/orders_view_widget.dart';
+import '../widgets/room_service_view_widget.dart';
 import '../widgets/service_type_dialog.dart';
 
 class WaiterDashboard extends StatefulWidget {
@@ -36,7 +37,7 @@ class _WaiterDashboardState extends State<WaiterDashboard> {
     final cart = context.watch<CartProvider>();
 
     return Scaffold(
-      floatingActionButton: cart.isEmpty
+      floatingActionButton: cart.isEmpty || cart.serviceType == null
           ? null
           : Container(
               margin: const EdgeInsets.all(16),
@@ -82,28 +83,34 @@ class _WaiterDashboardState extends State<WaiterDashboard> {
 
               const SizedBox(height: 8),
 
-              // Menu/Orders Toggle
-              MenuToggleWidget(
-                isMenuMode: _isMenuMode,
-                onToggle: (isMenu) => setState(() => _isMenuMode = isMenu),
-              ),
+              // Menu/Orders Toggle (hide for takeaway)
+              if (cart.serviceType?.name != 'takeaway')
+                MenuToggleWidget(
+                  isMenuMode: _isMenuMode,
+                  onToggle: (isMenu) => setState(() => _isMenuMode = isMenu),
+                  isRoomService: cart.serviceType?.name == 'roomService',
+                ),
 
               const SizedBox(height: 8),
 
-              // Search Bar (only show in menu mode)
-              if (_isMenuMode) const SearchBarWidget(),
+              // Search Bar (show in menu mode or takeaway)
+              if (_isMenuMode || cart.serviceType?.name == 'takeaway')
+                const SearchBarWidget(),
 
               const SizedBox(height: 4),
 
-              // Breadcrumb (only show in menu mode)
-              if (_isMenuMode) const BreadcrumbWidget(),
+              // Breadcrumb (show in menu mode or takeaway)
+              if (_isMenuMode || cart.serviceType?.name == 'takeaway')
+                const BreadcrumbWidget(),
 
               const SizedBox(height: 4),
 
               // Content Section
               Expanded(
-                child: _isMenuMode
+                child: _isMenuMode || cart.serviceType?.name == 'takeaway'
                     ? const ContentWidget()
+                    : cart.serviceType?.name == 'roomService'
+                    ? const RoomServiceViewWidget()
                     : const OrdersViewWidget(),
               ),
             ],
@@ -274,6 +281,7 @@ class _WaiterDashboardState extends State<WaiterDashboard> {
 
     showDialog(
       context: context,
+      barrierDismissible: false,
       builder: (context) => StatefulBuilder(
         builder: (context, setState) => AlertDialog(
           shape: RoundedRectangleBorder(
@@ -291,141 +299,157 @@ class _WaiterDashboardState extends State<WaiterDashboard> {
             ],
           ),
           content: SizedBox(
-            width: 400,
-            child: Column(
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                const Text(
-                  'Please provide the following details to complete the order:',
-                  style: TextStyle(fontSize: 14),
-                ),
-                const SizedBox(height: 20),
-                // Service Type Display
-                if (cart.serviceType != null) ...[
-                  Container(
-                    padding: const EdgeInsets.all(12),
-                    decoration: BoxDecoration(
-                      color: theme.colorScheme.primary.withOpacity(0.1),
-                      borderRadius: BorderRadius.circular(12),
-                      border: Border.all(
-                        color: theme.colorScheme.primary.withOpacity(0.3),
-                      ),
+            width: 350,
+            child: ConstrainedBox(
+              constraints: const BoxConstraints(maxHeight: 600),
+              child: SingleChildScrollView(
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    const Text(
+                      'Please provide the following details to complete the order:',
+                      style: TextStyle(fontSize: 14),
                     ),
-                    child: Row(
-                      children: [
-                        Container(
-                          width: 40,
-                          height: 40,
-                          decoration: BoxDecoration(
-                            color: theme.colorScheme.primary,
-                            borderRadius: BorderRadius.circular(8),
+                    const SizedBox(height: 20),
+                    // Service Type Display
+                    if (cart.serviceType != null) ...[
+                      Container(
+                        padding: const EdgeInsets.all(12),
+                        decoration: BoxDecoration(
+                          color: theme.colorScheme.primary.withOpacity(0.1),
+                          borderRadius: BorderRadius.circular(12),
+                          border: Border.all(
+                            color: theme.colorScheme.primary.withOpacity(0.3),
                           ),
-                          child: Center(
-                            child: Text(
-                              cart.serviceType!.icon,
-                              style: const TextStyle(fontSize: 20),
+                        ),
+                        child: Row(
+                          children: [
+                            Container(
+                              width: 40,
+                              height: 40,
+                              decoration: BoxDecoration(
+                                color: theme.colorScheme.primary,
+                                borderRadius: BorderRadius.circular(8),
+                              ),
+                              child: Center(
+                                child: Text(
+                                  cart.serviceType!.icon,
+                                  style: const TextStyle(fontSize: 20),
+                                ),
+                              ),
+                            ),
+                            const SizedBox(width: 12),
+                            Expanded(
+                              child: Column(
+                                crossAxisAlignment: CrossAxisAlignment.start,
+                                children: [
+                                  Text(
+                                    'Service Type',
+                                    style: TextStyle(
+                                      fontSize: 12,
+                                      color: theme.colorScheme.primary
+                                          .withOpacity(0.7),
+                                      fontWeight: FontWeight.w500,
+                                    ),
+                                  ),
+                                  Text(
+                                    cart.serviceType!.displayName,
+                                    style: TextStyle(
+                                      fontSize: 16,
+                                      color: theme.colorScheme.primary,
+                                      fontWeight: FontWeight.bold,
+                                    ),
+                                  ),
+                                ],
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+                      const SizedBox(height: 16),
+                    ],
+                    // Seat Number Input
+                    TextField(
+                      controller: seatController,
+                      decoration: InputDecoration(
+                        labelText: 'Seat Number *',
+                        hintText: 'e.g., T5-S2',
+                        prefixIcon: Icon(
+                          Icons.chair_rounded,
+                          color: theme.colorScheme.primary,
+                          size: 20,
+                        ),
+                        border: OutlineInputBorder(
+                          borderRadius: BorderRadius.circular(12),
+                        ),
+                        filled: true,
+                        fillColor: theme.colorScheme.surface,
+                        contentPadding: const EdgeInsets.symmetric(
+                          horizontal: 12,
+                          vertical: 12,
+                        ),
+                      ),
+                      keyboardType: TextInputType.text,
+                      maxLength: 20,
+                    ),
+                    const SizedBox(height: 16),
+                    // Remarks/Special Requests Input
+                    TextField(
+                      controller: remarksController,
+                      decoration: InputDecoration(
+                        labelText: 'Special Requests / Remarks',
+                        hintText: 'e.g., No spice, Extra sauce',
+                        prefixIcon: Icon(
+                          Icons.note_rounded,
+                          color: theme.colorScheme.primary,
+                          size: 20,
+                        ),
+                        border: OutlineInputBorder(
+                          borderRadius: BorderRadius.circular(12),
+                        ),
+                        filled: true,
+                        fillColor: theme.colorScheme.surface,
+                        contentPadding: const EdgeInsets.symmetric(
+                          horizontal: 12,
+                          vertical: 12,
+                        ),
+                      ),
+                      maxLines: 2,
+                      maxLength: 100,
+                      keyboardType: TextInputType.multiline,
+                    ),
+                    const SizedBox(height: 16),
+                    // Order Summary
+                    Container(
+                      padding: const EdgeInsets.all(12),
+                      decoration: BoxDecoration(
+                        color: theme.colorScheme.primary.withOpacity(0.1),
+                        borderRadius: BorderRadius.circular(12),
+                      ),
+                      child: Row(
+                        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                        children: [
+                          Text(
+                            'Total Amount:',
+                            style: TextStyle(
+                              fontWeight: FontWeight.w600,
+                              color: theme.colorScheme.primary,
                             ),
                           ),
-                        ),
-                        const SizedBox(width: 12),
-                        Expanded(
-                          child: Column(
-                            crossAxisAlignment: CrossAxisAlignment.start,
-                            children: [
-                              Text(
-                                'Service Type',
-                                style: TextStyle(
-                                  fontSize: 12,
-                                  color: theme.colorScheme.primary.withOpacity(
-                                    0.7,
-                                  ),
-                                  fontWeight: FontWeight.w500,
-                                ),
-                              ),
-                              Text(
-                                cart.serviceType!.displayName,
-                                style: TextStyle(
-                                  fontSize: 16,
-                                  color: theme.colorScheme.primary,
-                                  fontWeight: FontWeight.bold,
-                                ),
-                              ),
-                            ],
+                          Text(
+                            'Rs.${cart.total.toStringAsFixed(0)}',
+                            style: TextStyle(
+                              fontWeight: FontWeight.bold,
+                              fontSize: 16,
+                              color: theme.colorScheme.primary,
+                            ),
                           ),
-                        ),
-                      ],
-                    ),
-                  ),
-                  const SizedBox(height: 16),
-                ],
-                // Seat Number Input
-                TextField(
-                  controller: seatController,
-                  decoration: InputDecoration(
-                    labelText: 'Seat Number *',
-                    hintText: 'e.g., Table 5, Seat 2',
-                    prefixIcon: Icon(
-                      Icons.chair_rounded,
-                      color: theme.colorScheme.primary,
-                    ),
-                    border: OutlineInputBorder(
-                      borderRadius: BorderRadius.circular(12),
-                    ),
-                    filled: true,
-                    fillColor: theme.colorScheme.surface,
-                  ),
-                  keyboardType: TextInputType.text,
-                ),
-                const SizedBox(height: 16),
-                // Remarks/Special Requests Input
-                TextField(
-                  controller: remarksController,
-                  decoration: InputDecoration(
-                    labelText: 'Special Requests / Remarks',
-                    hintText: 'e.g., No spice, Extra sauce, etc.',
-                    prefixIcon: Icon(
-                      Icons.note_rounded,
-                      color: theme.colorScheme.primary,
-                    ),
-                    border: OutlineInputBorder(
-                      borderRadius: BorderRadius.circular(12),
-                    ),
-                    filled: true,
-                    fillColor: theme.colorScheme.surface,
-                  ),
-                  maxLines: 3,
-                  keyboardType: TextInputType.multiline,
-                ),
-                const SizedBox(height: 16),
-                // Order Summary
-                Container(
-                  padding: const EdgeInsets.all(12),
-                  decoration: BoxDecoration(
-                    color: theme.colorScheme.primary.withOpacity(0.1),
-                    borderRadius: BorderRadius.circular(12),
-                  ),
-                  child: Row(
-                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                    children: [
-                      Text(
-                        'Total Amount:',
-                        style: TextStyle(
-                          fontWeight: FontWeight.w600,
-                          color: theme.colorScheme.primary,
-                        ),
+                        ],
                       ),
-                      Text(
-                        'Rs.${cart.total.toStringAsFixed(0)}',
-                        style: TextStyle(
-                          fontWeight: FontWeight.bold,
-                          fontSize: 16,
-                          color: theme.colorScheme.primary,
-                        ),
-                      ),
-                    ],
-                  ),
+                    ),
+                  ],
                 ),
-              ],
+              ),
             ),
           ),
           actions: [
@@ -460,6 +484,7 @@ class _WaiterDashboardState extends State<WaiterDashboard> {
                 // Show success dialog
                 showDialog(
                   context: context,
+                  barrierDismissible: false,
                   builder: (context) => AlertDialog(
                     shape: RoundedRectangleBorder(
                       borderRadius: BorderRadius.circular(20),

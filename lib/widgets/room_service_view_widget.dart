@@ -1,18 +1,18 @@
 import 'package:flutter/material.dart';
 
-class OrdersViewWidget extends StatelessWidget {
-  const OrdersViewWidget({super.key});
+class RoomServiceViewWidget extends StatelessWidget {
+  const RoomServiceViewWidget({super.key});
 
-  // Mock table data
-  final List<Map<String, dynamic>> _tables = const [
-    {'id': 1, 'number': 'Table 1', 'isPaid': false},
-    {'id': 2, 'number': 'Table 2', 'isPaid': true},
-    {'id': 3, 'number': 'Table 3', 'isPaid': false},
-    {'id': 4, 'number': 'Table 4', 'isPaid': true},
-    {'id': 5, 'number': 'Table 5', 'isPaid': false},
-    {'id': 6, 'number': 'Table 6', 'isPaid': true},
-    {'id': 7, 'number': 'Table 7', 'isPaid': false},
-    {'id': 8, 'number': 'Table 8', 'isPaid': true},
+  // Mock room data
+  final List<Map<String, dynamic>> _rooms = const [
+    {'id': 1, 'number': 'Room 101', 'isPaid': false},
+    {'id': 2, 'number': 'Room 102', 'isPaid': true},
+    {'id': 3, 'number': 'Room 201', 'isPaid': false},
+    {'id': 4, 'number': 'Room 202', 'isPaid': true},
+    {'id': 5, 'number': 'Room 301', 'isPaid': false},
+    {'id': 6, 'number': 'Room 302', 'isPaid': true},
+    {'id': 7, 'number': 'Room 401', 'isPaid': false},
+    {'id': 8, 'number': 'Room 402', 'isPaid': true},
   ];
 
   @override
@@ -25,7 +25,7 @@ class OrdersViewWidget extends StatelessWidget {
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           Text(
-            'Table Status',
+            'Room Service Status',
             style: theme.textTheme.headlineSmall?.copyWith(
               fontWeight: FontWeight.bold,
               color: theme.colorScheme.primary,
@@ -40,15 +40,15 @@ class OrdersViewWidget extends StatelessWidget {
                 crossAxisSpacing: 12,
                 mainAxisSpacing: 12,
               ),
-              itemCount: _tables.length,
+              itemCount: _rooms.length,
               itemBuilder: (context, index) {
-                final table = _tables[index];
-                final isPaid = table['isPaid'] as bool;
+                final room = _rooms[index];
+                final isPaid = room['isPaid'] as bool;
 
                 return GestureDetector(
                   onTap: isPaid
                       ? null
-                      : () => _showTableDetails(context, theme, table),
+                      : () => _showRoomDetails(context, theme, room),
                   child: Container(
                     decoration: BoxDecoration(
                       gradient: LinearGradient(
@@ -56,18 +56,18 @@ class OrdersViewWidget extends StatelessWidget {
                         end: Alignment.bottomRight,
                         colors: isPaid
                             ? [Colors.green.shade100, Colors.green.shade50]
-                            : [Colors.red.shade100, Colors.red.shade50],
+                            : [Colors.orange.shade100, Colors.orange.shade50],
                       ),
                       borderRadius: BorderRadius.circular(20),
                       border: Border.all(
                         color: isPaid
                             ? Colors.green.shade400
-                            : Colors.red.shade400,
+                            : Colors.orange.shade400,
                         width: 3,
                       ),
                       boxShadow: [
                         BoxShadow(
-                          color: (isPaid ? Colors.green : Colors.red)
+                          color: (isPaid ? Colors.green : Colors.orange)
                               .withOpacity(0.3),
                           blurRadius: 12,
                           offset: const Offset(0, 6),
@@ -82,11 +82,11 @@ class OrdersViewWidget extends StatelessWidget {
                           decoration: BoxDecoration(
                             color: isPaid
                                 ? Colors.green.shade600
-                                : Colors.red.shade600,
+                                : Colors.orange.shade600,
                             shape: BoxShape.circle,
                             boxShadow: [
                               BoxShadow(
-                                color: (isPaid ? Colors.green : Colors.red)
+                                color: (isPaid ? Colors.green : Colors.orange)
                                     .withOpacity(0.3),
                                 blurRadius: 8,
                                 offset: const Offset(0, 4),
@@ -96,20 +96,20 @@ class OrdersViewWidget extends StatelessWidget {
                           child: Icon(
                             isPaid
                                 ? Icons.check_circle_rounded
-                                : Icons.restaurant_rounded,
+                                : Icons.hotel_rounded,
                             size: 28,
                             color: Colors.white,
                           ),
                         ),
                         const SizedBox(height: 12),
                         Text(
-                          table['number'],
+                          room['number'],
                           style: TextStyle(
                             fontSize: 18,
                             fontWeight: FontWeight.bold,
                             color: isPaid
                                 ? Colors.green.shade800
-                                : Colors.red.shade800,
+                                : Colors.orange.shade800,
                           ),
                         ),
                         const SizedBox(height: 6),
@@ -121,7 +121,7 @@ class OrdersViewWidget extends StatelessWidget {
                           decoration: BoxDecoration(
                             color: isPaid
                                 ? Colors.green.shade600
-                                : Colors.red.shade600,
+                                : Colors.orange.shade600,
                             borderRadius: BorderRadius.circular(12),
                           ),
                           child: Text(
@@ -146,10 +146,10 @@ class OrdersViewWidget extends StatelessWidget {
     );
   }
 
-  void _showTableDetails(
+  void _showRoomDetails(
     BuildContext context,
     ThemeData theme,
-    Map<String, dynamic> table,
+    Map<String, dynamic> room,
   ) {
     showDialog(
       context: context,
@@ -158,12 +158,12 @@ class OrdersViewWidget extends StatelessWidget {
         title: Row(
           children: [
             Icon(
-              Icons.table_restaurant_rounded,
-              color: theme.colorScheme.primary,
+              Icons.hotel_rounded,
+              color: Colors.orange,
               size: 24,
             ),
             const SizedBox(width: 12),
-            Text(table['number']),
+            Text(room['number']),
           ],
         ),
         content: SizedBox(
@@ -175,9 +175,9 @@ class OrdersViewWidget extends StatelessWidget {
               Container(
                 padding: const EdgeInsets.all(16),
                 decoration: BoxDecoration(
-                  color: Colors.red.shade50,
+                  color: Colors.orange.shade50,
                   borderRadius: BorderRadius.circular(12),
-                  border: Border.all(color: Colors.red.shade200),
+                  border: Border.all(color: Colors.orange.shade200),
                 ),
                 child: Column(
                   children: [
@@ -188,14 +188,14 @@ class OrdersViewWidget extends StatelessWidget {
                           'Status:',
                           style: TextStyle(
                             fontWeight: FontWeight.w600,
-                            color: Colors.red.shade700,
+                            color: Colors.orange.shade700,
                           ),
                         ),
                         Text(
                           'Unpaid',
                           style: TextStyle(
                             fontWeight: FontWeight.bold,
-                            color: Colors.red.shade700,
+                            color: Colors.orange.shade700,
                           ),
                         ),
                       ],

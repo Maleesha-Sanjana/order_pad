@@ -119,14 +119,11 @@ class OrderTableWidget extends StatelessWidget {
                   children: [
                     Expanded(flex: 1, child: _buildTableHeader('#')),
                     Expanded(flex: 2, child: _buildTableHeader('Item')),
-                    Expanded(flex: 1, child: _buildTableHeader('Price (Rs.)')),
+                    Expanded(flex: 1, child: _buildTableHeader('Pri.')),
                     Expanded(flex: 1, child: _buildTableHeader('Qty')),
-                    Expanded(flex: 1, child: _buildTableHeader('Disc%')),
-                    Expanded(
-                      flex: 1,
-                      child: _buildTableHeader('Service (Rs.)'),
-                    ),
-                    Expanded(flex: 1, child: _buildTableHeader('Total (Rs.)')),
+                    Expanded(flex: 1, child: _buildTableHeader('Dis')),
+                    Expanded(flex: 1, child: _buildTableHeader('Ser.')),
+                    Expanded(flex: 1, child: _buildTableHeader('Tot')),
                     Expanded(flex: 1, child: _buildTableHeader('Del')),
                   ],
                 ),
@@ -169,22 +166,34 @@ class OrderTableWidget extends StatelessWidget {
             mainAxisAlignment: MainAxisAlignment.center,
             children: [
               Icon(
-                Icons.shopping_cart_outlined,
+                cart.serviceType == null
+                    ? Icons.warning_rounded
+                    : Icons.shopping_cart_outlined,
                 size: 48,
-                color: theme.colorScheme.outline.withOpacity(0.5),
+                color: cart.serviceType == null
+                    ? Colors.orange.withOpacity(0.7)
+                    : theme.colorScheme.outline.withOpacity(0.5),
               ),
               const SizedBox(height: 16),
               Text(
-                'No items added yet',
+                cart.serviceType == null
+                    ? 'Please select a service type first'
+                    : 'No items added yet',
                 style: theme.textTheme.bodyLarge?.copyWith(
-                  color: theme.colorScheme.outline.withOpacity(0.7),
+                  color: cart.serviceType == null
+                      ? Colors.orange.withOpacity(0.8)
+                      : theme.colorScheme.outline.withOpacity(0.7),
                 ),
               ),
               const SizedBox(height: 8),
               Text(
-                'Add items from the menu below',
+                cart.serviceType == null
+                    ? 'Click "Select Service Type" above to continue'
+                    : 'Add items from the menu below',
                 style: theme.textTheme.bodyMedium?.copyWith(
-                  color: theme.colorScheme.outline.withOpacity(0.5),
+                  color: cart.serviceType == null
+                      ? Colors.orange.withOpacity(0.6)
+                      : theme.colorScheme.outline.withOpacity(0.5),
                 ),
               ),
             ],
