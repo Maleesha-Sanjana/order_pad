@@ -1,17 +1,20 @@
 import 'package:flutter/foundation.dart';
 import '../models/cart_item.dart';
 import '../models/food_item.dart';
+import '../models/service_type.dart';
 
 class CartProvider extends ChangeNotifier {
   final List<CartItem> _items = [];
   String? _customerName;
   String? _tableNumber;
   String? _seatNumber;
+  ServiceType? _serviceType;
 
   List<CartItem> get items => List.unmodifiable(_items);
   String? get customerName => _customerName;
   String? get tableNumber => _tableNumber;
   String? get seatNumber => _seatNumber;
+  ServiceType? get serviceType => _serviceType;
   int get itemCount {
     try {
       return _items.fold(0, (sum, item) => sum + item.quantity);
@@ -97,6 +100,7 @@ class CartProvider extends ChangeNotifier {
     _customerName = null;
     _tableNumber = null;
     _seatNumber = null;
+    _serviceType = null;
     notifyListeners();
   }
 
@@ -104,6 +108,11 @@ class CartProvider extends ChangeNotifier {
     _customerName = name;
     _tableNumber = tableNumber;
     _seatNumber = seatNumber;
+    notifyListeners();
+  }
+
+  void setServiceType(ServiceType? serviceType) {
+    _serviceType = serviceType;
     notifyListeners();
   }
 
