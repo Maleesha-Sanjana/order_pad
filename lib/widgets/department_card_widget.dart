@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import '../providers/menu_provider.dart';
+import '../providers/database_data_provider.dart';
 import '../models/department.dart';
 
 class DepartmentCardWidget extends StatelessWidget {
@@ -12,6 +13,7 @@ class DepartmentCardWidget extends StatelessWidget {
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
     final menu = context.watch<MenuProvider>();
+    final databaseData = context.watch<DatabaseDataProvider>();
 
     return Container(
       margin: const EdgeInsets.only(bottom: 16),
@@ -29,7 +31,18 @@ class DepartmentCardWidget extends StatelessWidget {
       child: Material(
         color: Colors.transparent,
         child: InkWell(
-          onTap: () => menu.selectDepartment(int.tryParse(department.id) ?? 0),
+          onTap: () async {
+            final departmentId = int.tryParse(department.id) ?? 0;
+            print(
+              '🏢 Department clicked: ${department.name} (${department.departmentCode})',
+            );
+            menu.selectDepartment(departmentId);
+            // Load sub-departments for this department
+            print(
+              '📁 Loading sub-departments for department: ${department.departmentCode}',
+            );
+            await databaseData.loadSubDepartments(department.departmentCode);
+          },
           borderRadius: BorderRadius.circular(20),
           child: Padding(
             padding: const EdgeInsets.all(24),
@@ -75,14 +88,6 @@ class DepartmentCardWidget extends StatelessWidget {
                         style: theme.textTheme.titleLarge?.copyWith(
                           fontWeight: FontWeight.bold,
                           color: theme.colorScheme.onSurface,
-                        ),
-                      ),
-                      const SizedBox(height: 6),
-                      Text(
-                        'Department items',
-                        style: theme.textTheme.bodyMedium?.copyWith(
-                          color: theme.colorScheme.onSurface.withOpacity(0.7),
-                          height: 1.4,
                         ),
                       ),
                     ],
