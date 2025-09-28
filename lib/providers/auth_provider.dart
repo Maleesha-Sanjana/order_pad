@@ -1,107 +1,181 @@
 import 'package:flutter/foundation.dart';
-import '../models/user.dart';
-import '../services/mock_api_client.dart';
+import '../models/salesman.dart';
+import '../services/api_service.dart';
 
 class AuthProvider extends ChangeNotifier {
-  final MockApiClient mockApiClient;
+  // Authentication state
+  Salesman? _currentSalesman;
+  bool _isLoading = false;
+  String? _errorMessage;
+  bool _isAuthenticated = false;
 
-  AppUser? _currentUser;
-  bool _loading = false;
-  String? _error;
+  // Getters
+  Salesman? get currentSalesman => _currentSalesman;
+  bool get isLoading => _isLoading;
+  String? get errorMessage => _errorMessage;
+  bool get isAuthenticated => _isAuthenticated;
+  bool get hasError => _errorMessage != null;
 
-  AppUser? get currentUser => _currentUser;
-  bool get loading => _loading;
-  String? get error => _error;
-  bool get isAuthenticated => _currentUser != null;
+  // Get salesman display info
+  String get salesmanName => _currentSalesman?.displayName ?? 'Unknown';
+  String get salesmanCode => _currentSalesman?.salesmanCode ?? '';
+  String get salesmanTitle => _currentSalesman?.title ?? 'Salesman';
 
-  AuthProvider() : mockApiClient = MockApiClient();
-
-  // Login with email and password
-  Future<void> login(String email, String password) async {
-    _loading = true;
-    _error = null;
+  /// Login with salesman code and password
+  Future<bool> login(String salesmanCode, String password) async {
+    _isLoading = true;
+    _errorMessage = null;
     notifyListeners();
 
     try {
-      // Use mock API for authentication
-      final response = await mockApiClient.login(email, password);
-      _currentUser = response.user;
-    } catch (e) {
-      _error = e.toString();
-      rethrow;
-    } finally {
-      _loading = false;
-      notifyListeners();
-    }
-  }
+      print('🔐 Attempting login for salesman: $salesmanCode');
 
-  // Login with password only (for waiter)
-  Future<void> loginWithPassword(String password) async {
-    _loading = true;
-    _error = null;
-    notifyListeners();
-
-    try {
-      // Use mock API for password-only authentication
-      final response = await mockApiClient.loginWithPassword(password);
-      _currentUser = response.user;
-    } catch (e) {
-      _error = e.toString();
-      rethrow;
-    } finally {
-      _loading = false;
-      notifyListeners();
-    }
-  }
-
-  // Sign up with email and password
-  Future<void> signup({
-    required String email,
-    required String password,
-    required String name,
-    String? phone,
-    String role = 'customer',
-  }) async {
-    _loading = true;
-    _error = null;
-    notifyListeners();
-
-    try {
-      // Use mock API for user creation
-      final response = await mockApiClient.signup(
-        AuthRequest(
-          email: email,
-          password: password,
-          name: name,
-          phone: phone,
-          role: role,
-        ),
+      // Authenticate with API
+      final response = await ApiService.authenticateSalesman(
+        salesmanCode,
+        password,
       );
 
-      _currentUser = response.user;
+      if (response['success'] == true) {
+        _currentSalesman = Salesman.fromJson(response['salesman']);
+        _isAuthenticated = true;
+        _errorMessage = null;
+
+        print('✅ Login successful: ${_currentSalesman!.displayName}');
+        notifyListeners();
+        return true;
+      } else {
+        _errorMessage =
+            response['message'] ?? 'Invalid salesman code or password';
+        _isAuthenticated = false;
+        print('❌ Login failed: ${_errorMessage}');
+        notifyListeners();
+        return false;
+      }
     } catch (e) {
-      _error = e.toString();
-      rethrow;
+      _errorMessage = 'Login failed: ${e.toString()}';
+      _isAuthenticated = false;
+      print('❌ Login error: $e');
+      notifyListeners();
+      return false;
     } finally {
-      _loading = false;
+      _isLoading = false;
       notifyListeners();
     }
   }
 
-  // Logout
-  Future<void> logout() async {
-    try {
-      _currentUser = null;
-      notifyListeners();
-    } catch (e) {
-      _error = e.toString();
-      notifyListeners();
-    }
-  }
+  /// Logout current salesman
+  void logout() {
+    _currentSalesman = null;
+    _isAuthenticated = false;
+    _errorMessage = null;
+    _isLoading = false;
 
-  // Clear error
-  void clearError() {
-    _error = null;
+    print('🚪 Logged out successfully');
     notifyListeners();
+  }
+
+  /// Clear error message
+  void clearError() {
+    _errorMessage = null;
+    notifyListeners();
+  }
+
+  /// Check if salesman code exists in database
+  Future<bool> checkSalesmanCodeExists(String salesmanCode) async {
+    try {
+      final salesmen = await ApiService.getSalesmen();
+      return salesmen.any((s) => s.salesmanCode == salesmanCode);
+    } catch (e) {
+      print('❌ Error checking salesman code: $e');
+      return false;
+    }
+  }
+
+  /// Get all available salesmen (for admin purposes)
+  Future<List<Salesman>> getAllSalesmen() async {
+    try {
+      return await ApiService.getSalesmen();
+    } catch (e) {
+      print('❌ Error fetching salesmen: $e');
+      return [];
+    }
+  }
+
+  /// Validate salesman code format
+  bool isValidSalesmanCode(String code) {
+    return code.isNotEmpty && code.length >= 3;
+  }
+
+  /// Validate password format
+  bool isValidPassword(String password) {
+    return password.isNotEmpty && password.length >= 4;
+  }
+
+  /// Check if current salesman is active
+  bool get isCurrentSalesmanActive {
+    return _currentSalesman?.isActive ?? false;
+  }
+
+  /// Get salesman permissions/access level
+  String get accessLevel {
+    if (_currentSalesman == null) return 'None';
+
+    // You can implement permission logic based on salesman type or other fields
+    switch (_currentSalesman!.salesmanType?.toLowerCase()) {
+      case 'admin':
+      case 'manager':
+        return 'Admin';
+      case 'supervisor':
+        return 'Supervisor';
+      case 'waiter':
+      case 'server':
+        return 'Waiter';
+      default:
+        return 'Standard';
+    }
+  }
+
+  /// Check if salesman has admin access
+  bool get isAdmin {
+    return accessLevel == 'Admin';
+  }
+
+  /// Check if salesman has supervisor access
+  bool get isSupervisor {
+    return accessLevel == 'Admin' || accessLevel == 'Supervisor';
+  }
+
+  /// Get salesman contact info
+  String get contactInfo {
+    if (_currentSalesman == null) return '';
+
+    final parts = <String>[];
+    if (_currentSalesman!.mobile?.isNotEmpty == true) {
+      parts.add('Mobile: ${_currentSalesman!.mobile}');
+    }
+    if (_currentSalesman!.email?.isNotEmpty == true) {
+      parts.add('Email: ${_currentSalesman!.email}');
+    }
+
+    return parts.join('\n');
+  }
+
+  /// Get salesman address
+  String get address {
+    if (_currentSalesman == null) return '';
+
+    final parts = <String>[];
+    if (_currentSalesman!.address1?.isNotEmpty == true) {
+      parts.add(_currentSalesman!.address1!);
+    }
+    if (_currentSalesman!.address2?.isNotEmpty == true) {
+      parts.add(_currentSalesman!.address2!);
+    }
+    if (_currentSalesman!.address3?.isNotEmpty == true) {
+      parts.add(_currentSalesman!.address3!);
+    }
+
+    return parts.join(', ');
   }
 }

@@ -2,11 +2,8 @@ import 'package:flutter/foundation.dart';
 import '../models/department.dart';
 import '../models/sub_department.dart';
 import '../models/food_item.dart';
-import '../services/mock_api_client.dart';
 
 class MenuProvider extends ChangeNotifier {
-  final MockApiClient mockApiClient;
-
   List<Department> _departments = [];
   List<SubDepartment> _subDepartments = [];
   List<FoodItem> _foodItems = [];
@@ -23,17 +20,17 @@ class MenuProvider extends ChangeNotifier {
   int? get selectedDepartmentId => _selectedDepartmentId;
   int? get selectedSubDepartmentId => _selectedSubDepartmentId;
 
-  MenuProvider() : mockApiClient = MockApiClient();
+  MenuProvider();
 
   Future<void> loadMenuData() async {
     _loading = true;
     notifyListeners();
 
     try {
-      // Load all data
-      _departments = await mockApiClient.getDepartments();
-      _subDepartments = await mockApiClient.getSubDepartments();
-      _foodItems = await mockApiClient.getFoodItems();
+      // Data is now loaded through DatabaseDataProvider
+      // This method is kept for compatibility but data loading
+      // is handled by DatabaseDataProvider
+      print('Menu data loading is now handled by DatabaseDataProvider');
     } catch (e) {
       print('Error loading menu data: $e');
       _departments = [];
@@ -83,14 +80,16 @@ class MenuProvider extends ChangeNotifier {
     // Filter by department
     if (_selectedDepartmentId != null) {
       filtered = filtered
-          .where((item) => item.departmentId == _selectedDepartmentId)
+          .where((item) => item.categoryId == _selectedDepartmentId.toString())
           .toList();
     }
 
     // Filter by sub-department
     if (_selectedSubDepartmentId != null) {
       filtered = filtered
-          .where((item) => item.subDepartmentId == _selectedSubDepartmentId)
+          .where(
+            (item) => item.subCategoryId == _selectedSubDepartmentId.toString(),
+          )
           .toList();
     }
 

@@ -6,10 +6,7 @@ import '../models/sub_department.dart';
 class SubDepartmentCardWidget extends StatelessWidget {
   final SubDepartment subDepartment;
 
-  const SubDepartmentCardWidget({
-    super.key,
-    required this.subDepartment,
-  });
+  const SubDepartmentCardWidget({super.key, required this.subDepartment});
 
   @override
   Widget build(BuildContext context) {
@@ -32,7 +29,8 @@ class SubDepartmentCardWidget extends StatelessWidget {
       child: Material(
         color: Colors.transparent,
         child: InkWell(
-          onTap: () => menu.selectSubDepartment(subDepartment.id),
+          onTap: () =>
+              menu.selectSubDepartment(int.tryParse(subDepartment.id) ?? 0),
           borderRadius: BorderRadius.circular(18),
           child: Padding(
             padding: const EdgeInsets.all(20),
@@ -61,10 +59,7 @@ class SubDepartmentCardWidget extends StatelessWidget {
                     ],
                   ),
                   child: Center(
-                    child: Text(
-                      subDepartment.icon ?? '🍽️',
-                      style: const TextStyle(fontSize: 24),
-                    ),
+                    child: const Text('🍽️', style: TextStyle(fontSize: 24)),
                   ),
                 ),
                 const SizedBox(width: 18),
@@ -80,16 +75,14 @@ class SubDepartmentCardWidget extends StatelessWidget {
                           color: theme.colorScheme.onSurface,
                         ),
                       ),
-                      if (subDepartment.description != null) ...[
-                        const SizedBox(height: 4),
-                        Text(
-                          subDepartment.description!,
-                          style: theme.textTheme.bodySmall?.copyWith(
-                            color: theme.colorScheme.onSurface.withOpacity(0.7),
-                            height: 1.3,
-                          ),
+                      const SizedBox(height: 4),
+                      Text(
+                        'Sub-department items',
+                        style: theme.textTheme.bodySmall?.copyWith(
+                          color: theme.colorScheme.onSurface.withOpacity(0.7),
+                          height: 1.3,
                         ),
-                      ],
+                      ),
                     ],
                   ),
                 ),

@@ -1,226 +1,267 @@
 import 'package:flutter/material.dart';
+import 'package:provider/provider.dart';
+import '../providers/database_data_provider.dart';
 
 class OrdersViewWidget extends StatelessWidget {
   const OrdersViewWidget({super.key});
-
-  // Mock table data
-  final List<Map<String, dynamic>> _tables = const [
-    {'id': 1, 'number': 'Table 1', 'isPaid': false},
-    {'id': 2, 'number': 'Table 2', 'isPaid': true},
-    {'id': 3, 'number': 'Table 3', 'isPaid': false},
-    {'id': 4, 'number': 'Table 4', 'isPaid': true},
-    {'id': 5, 'number': 'Table 5', 'isPaid': false},
-    {'id': 6, 'number': 'Table 6', 'isPaid': true},
-    {'id': 7, 'number': 'Table 7', 'isPaid': false},
-    {'id': 8, 'number': 'Table 8', 'isPaid': true},
-  ];
 
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
 
-    return Container(
-      padding: const EdgeInsets.all(16),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Text(
-            'Table Status',
-            style: theme.textTheme.headlineSmall?.copyWith(
-              fontWeight: FontWeight.bold,
-              color: theme.colorScheme.primary,
-            ),
-          ),
-          const SizedBox(height: 16),
-          Expanded(
-            child: GridView.builder(
-              gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
-                crossAxisCount: 2,
-                childAspectRatio: 1.2,
-                crossAxisSpacing: 12,
-                mainAxisSpacing: 12,
-              ),
-              itemCount: _tables.length,
-              itemBuilder: (context, index) {
-                final table = _tables[index];
-                final isPaid = table['isPaid'] as bool;
+    return Consumer<DatabaseDataProvider>(
+      builder: (context, databaseData, child) {
+        // Load orders if not already loaded
+        if (databaseData.orders.isEmpty && !databaseData.isLoadingOrders) {
+          databaseData.loadOrders();
+        }
 
-                return GestureDetector(
-                  onTap: isPaid
-                      ? null
-                      : () => _showTableDetails(context, theme, table),
-                  child: Container(
-                    decoration: BoxDecoration(
-                      gradient: LinearGradient(
-                        begin: Alignment.topLeft,
-                        end: Alignment.bottomRight,
-                        colors: isPaid
-                            ? [Colors.green.shade100, Colors.green.shade50]
-                            : [Colors.red.shade100, Colors.red.shade50],
-                      ),
-                      borderRadius: BorderRadius.circular(20),
-                      border: Border.all(
-                        color: isPaid
-                            ? Colors.green.shade400
-                            : Colors.red.shade400,
-                        width: 3,
-                      ),
-                      boxShadow: [
-                        BoxShadow(
-                          color: (isPaid ? Colors.green : Colors.red)
-                              .withOpacity(0.3),
-                          blurRadius: 12,
-                          offset: const Offset(0, 6),
-                        ),
-                      ],
-                    ),
-                    child: Column(
-                      mainAxisAlignment: MainAxisAlignment.center,
-                      children: [
-                        Container(
-                          padding: const EdgeInsets.all(12),
-                          decoration: BoxDecoration(
-                            color: isPaid
-                                ? Colors.green.shade600
-                                : Colors.red.shade600,
-                            shape: BoxShape.circle,
-                            boxShadow: [
-                              BoxShadow(
-                                color: (isPaid ? Colors.green : Colors.red)
-                                    .withOpacity(0.3),
-                                blurRadius: 8,
-                                offset: const Offset(0, 4),
-                              ),
-                            ],
-                          ),
-                          child: Icon(
-                            isPaid
-                                ? Icons.check_circle_rounded
-                                : Icons.restaurant_rounded,
-                            size: 28,
-                            color: Colors.white,
-                          ),
-                        ),
-                        const SizedBox(height: 12),
-                        Text(
-                          table['number'],
-                          style: TextStyle(
-                            fontSize: 18,
-                            fontWeight: FontWeight.bold,
-                            color: isPaid
-                                ? Colors.green.shade800
-                                : Colors.red.shade800,
-                          ),
-                        ),
-                        const SizedBox(height: 6),
-                        Container(
-                          padding: const EdgeInsets.symmetric(
-                            horizontal: 12,
-                            vertical: 4,
-                          ),
-                          decoration: BoxDecoration(
-                            color: isPaid
-                                ? Colors.green.shade600
-                                : Colors.red.shade600,
-                            borderRadius: BorderRadius.circular(12),
-                          ),
-                          child: Text(
-                            isPaid ? 'PAID' : 'UNPAID',
-                            style: const TextStyle(
-                              fontSize: 11,
-                              fontWeight: FontWeight.bold,
-                              color: Colors.white,
-                              letterSpacing: 0.5,
-                            ),
-                          ),
-                        ),
-                      ],
+        return Container(
+          padding: const EdgeInsets.all(16),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              // Header
+              Row(
+                children: [
+                  Icon(
+                    Icons.table_restaurant,
+                    color: theme.colorScheme.primary,
+                    size: 28,
+                  ),
+                  const SizedBox(width: 12),
+                  Text(
+                    'Table Status',
+                    style: theme.textTheme.headlineSmall?.copyWith(
+                      fontWeight: FontWeight.bold,
+                      color: theme.colorScheme.onSurface,
                     ),
                   ),
-                );
-              },
-            ),
-          ),
-        ],
-      ),
-    );
-  }
+                ],
+              ),
+              const SizedBox(height: 20),
+              // Orders Grid
+              Expanded(
+                child: databaseData.isLoadingOrders
+                    ? const Center(child: CircularProgressIndicator())
+                    : databaseData.orders.isEmpty
+                    ? Center(
+                        child: Column(
+                          mainAxisAlignment: MainAxisAlignment.center,
+                          children: [
+                            Icon(
+                              Icons.table_restaurant_outlined,
+                              size: 64,
+                              color: theme.colorScheme.onSurface.withOpacity(
+                                0.3,
+                              ),
+                            ),
+                            const SizedBox(height: 16),
+                            Text(
+                              'No orders found',
+                              style: theme.textTheme.titleLarge?.copyWith(
+                                color: theme.colorScheme.onSurface.withOpacity(
+                                  0.6,
+                                ),
+                              ),
+                            ),
+                            const SizedBox(height: 8),
+                            Text(
+                              'Orders will appear here when customers place them',
+                              style: theme.textTheme.bodyMedium?.copyWith(
+                                color: theme.colorScheme.onSurface.withOpacity(
+                                  0.5,
+                                ),
+                              ),
+                              textAlign: TextAlign.center,
+                            ),
+                          ],
+                        ),
+                      )
+                    : GridView.builder(
+                        gridDelegate:
+                            const SliverGridDelegateWithFixedCrossAxisCount(
+                              crossAxisCount: 2,
+                              childAspectRatio: 1.2,
+                              crossAxisSpacing: 16,
+                              mainAxisSpacing: 16,
+                            ),
+                        itemCount: databaseData.orders.length,
+                        itemBuilder: (context, index) {
+                          final order = databaseData.orders[index];
+                          final isPaid =
+                              order.status.toLowerCase() == 'paid' ||
+                              order.status.toLowerCase() == 'completed';
 
-  void _showTableDetails(
-    BuildContext context,
-    ThemeData theme,
-    Map<String, dynamic> table,
-  ) {
-    showDialog(
-      context: context,
-      builder: (context) => AlertDialog(
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
-        title: Row(
-          children: [
-            Icon(
-              Icons.table_restaurant_rounded,
-              color: theme.colorScheme.primary,
-              size: 24,
-            ),
-            const SizedBox(width: 12),
-            Text(table['number']),
-          ],
-        ),
-        content: SizedBox(
-          width: 500,
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              // Status and Summary
-              Container(
-                padding: const EdgeInsets.all(16),
-                decoration: BoxDecoration(
-                  color: Colors.red.shade50,
-                  borderRadius: BorderRadius.circular(12),
-                  border: Border.all(color: Colors.red.shade200),
-                ),
-                child: Column(
-                  children: [
-                    Row(
-                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                      children: [
-                        Text(
-                          'Status:',
-                          style: TextStyle(
-                            fontWeight: FontWeight.w600,
-                            color: Colors.red.shade700,
-                          ),
-                        ),
-                        Text(
-                          'Unpaid',
-                          style: TextStyle(
-                            fontWeight: FontWeight.bold,
-                            color: Colors.red.shade700,
-                          ),
-                        ),
-                      ],
-                    ),
-                  ],
-                ),
+                          return GestureDetector(
+                            onTap: isPaid
+                                ? null
+                                : () =>
+                                      _showOrderDetails(context, theme, order),
+                            child: Container(
+                              decoration: BoxDecoration(
+                                gradient: LinearGradient(
+                                  begin: Alignment.topLeft,
+                                  end: Alignment.bottomRight,
+                                  colors: isPaid
+                                      ? [
+                                          Colors.green.shade100,
+                                          Colors.green.shade50,
+                                        ]
+                                      : [
+                                          Colors.red.shade100,
+                                          Colors.red.shade50,
+                                        ],
+                                ),
+                                borderRadius: BorderRadius.circular(20),
+                                border: Border.all(
+                                  color: isPaid
+                                      ? Colors.green.shade400
+                                      : Colors.red.shade400,
+                                  width: 2,
+                                ),
+                                boxShadow: [
+                                  BoxShadow(
+                                    color: (isPaid ? Colors.green : Colors.red)
+                                        .withOpacity(0.2),
+                                    blurRadius: 8,
+                                    offset: const Offset(0, 4),
+                                  ),
+                                ],
+                              ),
+                              child: Padding(
+                                padding: const EdgeInsets.all(16),
+                                child: Column(
+                                  mainAxisAlignment: MainAxisAlignment.center,
+                                  children: [
+                                    // Table Icon
+                                    Container(
+                                      width: 50,
+                                      height: 50,
+                                      decoration: BoxDecoration(
+                                        color: isPaid
+                                            ? Colors.green.shade600
+                                            : Colors.red.shade600,
+                                        borderRadius: BorderRadius.circular(12),
+                                      ),
+                                      child: Icon(
+                                        Icons.table_restaurant,
+                                        color: Colors.white,
+                                        size: 24,
+                                      ),
+                                    ),
+                                    const SizedBox(height: 12),
+                                    // Table Number
+                                    Text(
+                                      'Table ${order.tableNumber}',
+                                      style: theme.textTheme.titleMedium
+                                          ?.copyWith(
+                                            fontWeight: FontWeight.bold,
+                                            color: isPaid
+                                                ? Colors.green.shade800
+                                                : Colors.red.shade800,
+                                          ),
+                                    ),
+                                    const SizedBox(height: 4),
+                                    // Status
+                                    Container(
+                                      padding: const EdgeInsets.symmetric(
+                                        horizontal: 12,
+                                        vertical: 4,
+                                      ),
+                                      decoration: BoxDecoration(
+                                        color: isPaid
+                                            ? Colors.green.shade600
+                                            : Colors.red.shade600,
+                                        borderRadius: BorderRadius.circular(12),
+                                      ),
+                                      child: Text(
+                                        order.status.toUpperCase(),
+                                        style: theme.textTheme.bodySmall
+                                            ?.copyWith(
+                                              color: Colors.white,
+                                              fontWeight: FontWeight.bold,
+                                              letterSpacing: 0.5,
+                                            ),
+                                      ),
+                                    ),
+                                  ],
+                                ),
+                              ),
+                            ),
+                          );
+                        },
+                      ),
               ),
             ],
           ),
+        );
+      },
+    );
+  }
+
+  void _showOrderDetails(BuildContext context, ThemeData theme, dynamic order) {
+    showDialog(
+      context: context,
+      barrierDismissible: false,
+      builder: (context) => AlertDialog(
+        title: Row(
+          children: [
+            Icon(Icons.table_restaurant, color: theme.colorScheme.primary),
+            const SizedBox(width: 8),
+            Text('Table ${order.tableNumber}'),
+          ],
+        ),
+        content: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Container(
+              padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+              decoration: BoxDecoration(
+                color:
+                    order.status.toLowerCase() == 'paid' ||
+                        order.status.toLowerCase() == 'completed'
+                    ? Colors.green.shade100
+                    : Colors.red.shade100,
+                borderRadius: BorderRadius.circular(8),
+                border: Border.all(
+                  color:
+                      order.status.toLowerCase() == 'paid' ||
+                          order.status.toLowerCase() == 'completed'
+                      ? Colors.green.shade400
+                      : Colors.red.shade400,
+                ),
+              ),
+              child: Text(
+                'Status: ${order.status.toUpperCase()}',
+                style: theme.textTheme.bodyMedium?.copyWith(
+                  fontWeight: FontWeight.bold,
+                  color:
+                      order.status.toLowerCase() == 'paid' ||
+                          order.status.toLowerCase() == 'completed'
+                      ? Colors.green.shade800
+                      : Colors.red.shade800,
+                ),
+              ),
+            ),
+            const SizedBox(height: 16),
+            if (order.remarks != null && order.remarks.isNotEmpty) ...[
+              Text(
+                'Remarks:',
+                style: theme.textTheme.titleSmall?.copyWith(
+                  fontWeight: FontWeight.bold,
+                ),
+              ),
+              const SizedBox(height: 4),
+              Text(order.remarks, style: theme.textTheme.bodyMedium),
+            ],
+          ],
         ),
         actions: [
           TextButton(
             onPressed: () => Navigator.of(context).pop(),
             child: const Text('Close'),
-          ),
-          ElevatedButton(
-            onPressed: () {
-              Navigator.of(context).pop();
-              // Here you can add logic to process payment
-            },
-            style: ElevatedButton.styleFrom(
-              backgroundColor: Colors.green,
-              foregroundColor: Colors.white,
-            ),
-            child: const Text('Mark as Paid'),
           ),
         ],
       ),

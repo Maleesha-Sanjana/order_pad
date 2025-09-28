@@ -12,6 +12,7 @@ class LandingPage extends StatefulWidget {
 class _LandingPageState extends State<LandingPage>
     with TickerProviderStateMixin {
   final _formKey = GlobalKey<FormState>();
+  final salesmanCodeController = TextEditingController();
   final passwordController = TextEditingController();
 
   late AnimationController _animationController;
@@ -58,6 +59,7 @@ class _LandingPageState extends State<LandingPage>
   void dispose() {
     _animationController.dispose();
     _gradientController.dispose();
+    salesmanCodeController.dispose();
     passwordController.dispose();
     super.dispose();
   }
@@ -67,18 +69,41 @@ class _LandingPageState extends State<LandingPage>
 
     final auth = context.read<AuthProvider>();
     try {
-      await auth.loginWithPassword(passwordController.text);
+      // Login with salesman code and password
+      final success = await auth.login(
+        salesmanCodeController.text.trim(),
+        passwordController.text,
+      );
 
       if (!mounted) return;
 
-      // Only allow waiter login
-      if (auth.currentUser?.role == 'waiter') {
-        Navigator.of(context).pushReplacementNamed('/waiter');
+      if (success) {
+        // Check if salesman is active
+        if (auth.isCurrentSalesmanActive) {
+          Navigator.of(context).pushReplacementNamed('/waiter');
+        } else {
+          // Show error for inactive salesmen
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(
+              content: const Text(
+                'Account is suspended or blacklisted. Please contact administrator.',
+              ),
+              backgroundColor: Theme.of(context).colorScheme.error,
+              behavior: SnackBarBehavior.floating,
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(12),
+              ),
+            ),
+          );
+          auth.logout();
+        }
       } else {
-        // Show error for non-waiter users
+        // Show error for invalid credentials
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
-            content: const Text('Access denied. Only waiters can use this app.'),
+            content: Text(
+              'Error: ${auth.errorMessage ?? 'Invalid credentials'}',
+            ),
             backgroundColor: Theme.of(context).colorScheme.error,
             behavior: SnackBarBehavior.floating,
             shape: RoundedRectangleBorder(
@@ -86,13 +111,12 @@ class _LandingPageState extends State<LandingPage>
             ),
           ),
         );
-        await auth.logout(); // Logout the user
       }
     } catch (e) {
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
-            content: Text('Error: ${auth.error ?? e.toString()}'),
+            content: Text('Login failed: ${e.toString()}'),
             backgroundColor: Theme.of(context).colorScheme.error,
             behavior: SnackBarBehavior.floating,
             shape: RoundedRectangleBorder(
@@ -143,9 +167,11 @@ class _LandingPageState extends State<LandingPage>
                 padding: const EdgeInsets.all(24),
                 child: ConstrainedBox(
                   constraints: BoxConstraints(
-                    minHeight: MediaQuery.of(context).size.height - 
-                               MediaQuery.of(context).padding.top - 
-                               MediaQuery.of(context).padding.bottom - 48,
+                    minHeight:
+                        MediaQuery.of(context).size.height -
+                        MediaQuery.of(context).padding.top -
+                        MediaQuery.of(context).padding.bottom -
+                        48,
                   ),
                   child: FadeTransition(
                     opacity: _fadeAnimation,
@@ -154,126 +180,151 @@ class _LandingPageState extends State<LandingPage>
                       child: Column(
                         crossAxisAlignment: CrossAxisAlignment.stretch,
                         children: [
-                    const SizedBox(height: 40),
-                    // Logo and Title
-                    Column(
-                      children: [
-                        Container(
-                          width: 80,
-                          height: 80,
-                          decoration: BoxDecoration(
-                            color: theme.colorScheme.primary,
-                            borderRadius: BorderRadius.circular(20),
-                            boxShadow: [
-                              BoxShadow(
-                                color: theme.colorScheme.primary.withOpacity(
-                                  0.3,
-                                ),
-                                blurRadius: 20,
-                                offset: const Offset(0, 10),
-                              ),
-                            ],
-                          ),
-                          child: Icon(
-                            Icons.restaurant,
-                            size: 40,
-                            color: theme.colorScheme.onPrimary,
-                          ),
-                        ),
-                        const SizedBox(height: 24),
-                        Text(
-                          'Waiter Order Pad',
-                          style: theme.textTheme.headlineLarge?.copyWith(
-                            color: theme.colorScheme.onSurface,
-                            fontWeight: FontWeight.bold,
-                          ),
-                        ),
-                        const SizedBox(height: 8),
-                        Text(
-                          'Enter your password to access the waiter order pad',
-                          style: theme.textTheme.bodyLarge?.copyWith(
-                            color: theme.colorScheme.onSurface.withOpacity(0.7),
-                          ),
-                          textAlign: TextAlign.center,
-                        ),
-                      ],
-                    ),
-                    const SizedBox(height: 48),
-                    // Auth Form
-                    Card(
-                      elevation: 8,
-                      shadowColor: theme.colorScheme.primary.withOpacity(0.2),
-                      shape: RoundedRectangleBorder(
-                        borderRadius: BorderRadius.circular(24),
-                      ),
-                      child: Padding(
-                        padding: const EdgeInsets.all(32),
-                        child: Form(
-                          key: _formKey,
-                          child: Column(
-                            crossAxisAlignment: CrossAxisAlignment.stretch,
+                          const SizedBox(height: 40),
+                          // Logo and Title
+                          Column(
                             children: [
-                              TextFormField(
-                                controller: passwordController,
-                                decoration: InputDecoration(
-                                  labelText: 'Password',
-                                  prefixIcon: const Icon(Icons.lock),
-                                  suffixIcon: IconButton(
-                                    icon: Icon(
-                                      _obscurePassword
-                                          ? Icons.visibility
-                                          : Icons.visibility_off,
+                              Container(
+                                width: 80,
+                                height: 80,
+                                decoration: BoxDecoration(
+                                  color: theme.colorScheme.primary,
+                                  borderRadius: BorderRadius.circular(20),
+                                  boxShadow: [
+                                    BoxShadow(
+                                      color: theme.colorScheme.primary
+                                          .withOpacity(0.3),
+                                      blurRadius: 20,
+                                      offset: const Offset(0, 10),
                                     ),
-                                    onPressed: () => setState(
-                                      () =>
-                                          _obscurePassword = !_obscurePassword,
-                                    ),
-                                  ),
+                                  ],
                                 ),
-                                obscureText: _obscurePassword,
-                                validator: (value) {
-                                  if (value == null || value.isEmpty) {
-                                    return 'Please enter your password';
-                                  }
-                                  if (value.length < 6) {
-                                    return 'Password must be at least 6 characters';
-                                  }
-                                  return null;
-                                },
+                                child: Icon(
+                                  Icons.restaurant,
+                                  size: 40,
+                                  color: theme.colorScheme.onPrimary,
+                                ),
                               ),
                               const SizedBox(height: 24),
-                              // Submit Button
-                              SizedBox(
-                                height: 56,
-                                child: ElevatedButton(
-                                  onPressed: auth.loading
-                                      ? null
-                                      : _handleSubmit,
-                                  child: auth.loading
-                                      ? const SizedBox(
-                                          width: 20,
-                                          height: 20,
-                                          child: CircularProgressIndicator(
-                                            strokeWidth: 2,
-                                            valueColor:
-                                                AlwaysStoppedAnimation<Color>(
-                                                  Colors.white,
-                                                ),
-                                          ),
-                                        )
-                                      : const Text(
-                                          'Sign In',
-                                          style: TextStyle(
-                                            fontSize: 16,
-                                            fontWeight: FontWeight.w600,
-                                          ),
-                                        ),
+                              Text(
+                                'Waiter Order Pad',
+                                style: theme.textTheme.headlineLarge?.copyWith(
+                                  color: theme.colorScheme.onSurface,
+                                  fontWeight: FontWeight.bold,
                                 ),
+                              ),
+                              const SizedBox(height: 8),
+                              Text(
+                                'Enter your password to access the waiter order pad',
+                                style: theme.textTheme.bodyLarge?.copyWith(
+                                  color: theme.colorScheme.onSurface
+                                      .withOpacity(0.7),
+                                ),
+                                textAlign: TextAlign.center,
                               ),
                             ],
                           ),
-                        ),
-                      ),
+                          const SizedBox(height: 48),
+                          // Auth Form
+                          Card(
+                            elevation: 8,
+                            shadowColor: theme.colorScheme.primary.withOpacity(
+                              0.2,
+                            ),
+                            shape: RoundedRectangleBorder(
+                              borderRadius: BorderRadius.circular(24),
+                            ),
+                            child: Padding(
+                              padding: const EdgeInsets.all(32),
+                              child: Form(
+                                key: _formKey,
+                                child: Column(
+                                  crossAxisAlignment:
+                                      CrossAxisAlignment.stretch,
+                                  children: [
+                                    // Salesman Code Field
+                                    TextFormField(
+                                      controller: salesmanCodeController,
+                                      decoration: const InputDecoration(
+                                        labelText: 'Salesman Code',
+                                        prefixIcon: Icon(Icons.person),
+                                        hintText: 'Enter your salesman code',
+                                      ),
+                                      textCapitalization:
+                                          TextCapitalization.characters,
+                                      validator: (value) {
+                                        if (value == null || value.isEmpty) {
+                                          return 'Please enter your salesman code';
+                                        }
+                                        if (value.length < 3) {
+                                          return 'Salesman code must be at least 3 characters';
+                                        }
+                                        return null;
+                                      },
+                                    ),
+                                    const SizedBox(height: 16),
+                                    // Password Field
+                                    TextFormField(
+                                      controller: passwordController,
+                                      decoration: InputDecoration(
+                                        labelText: 'Password',
+                                        prefixIcon: const Icon(Icons.lock),
+                                        suffixIcon: IconButton(
+                                          icon: Icon(
+                                            _obscurePassword
+                                                ? Icons.visibility
+                                                : Icons.visibility_off,
+                                          ),
+                                          onPressed: () => setState(
+                                            () => _obscurePassword =
+                                                !_obscurePassword,
+                                          ),
+                                        ),
+                                      ),
+                                      obscureText: _obscurePassword,
+                                      validator: (value) {
+                                        if (value == null || value.isEmpty) {
+                                          return 'Please enter your password';
+                                        }
+                                        if (value.length < 4) {
+                                          return 'Password must be at least 4 characters';
+                                        }
+                                        return null;
+                                      },
+                                    ),
+                                    const SizedBox(height: 24),
+                                    // Submit Button
+                                    SizedBox(
+                                      height: 56,
+                                      child: ElevatedButton(
+                                        onPressed: auth.isLoading
+                                            ? null
+                                            : _handleSubmit,
+                                        child: auth.isLoading
+                                            ? const SizedBox(
+                                                width: 20,
+                                                height: 20,
+                                                child: CircularProgressIndicator(
+                                                  strokeWidth: 2,
+                                                  valueColor:
+                                                      AlwaysStoppedAnimation<
+                                                        Color
+                                                      >(Colors.white),
+                                                ),
+                                              )
+                                            : const Text(
+                                                'Sign In',
+                                                style: TextStyle(
+                                                  fontSize: 16,
+                                                  fontWeight: FontWeight.w600,
+                                                ),
+                                              ),
+                                      ),
+                                    ),
+                                  ],
+                                ),
+                              ),
+                            ),
                           ),
                           const SizedBox(height: 20),
                         ],

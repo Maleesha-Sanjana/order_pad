@@ -6,10 +6,7 @@ import '../models/department.dart';
 class DepartmentCardWidget extends StatelessWidget {
   final Department department;
 
-  const DepartmentCardWidget({
-    super.key,
-    required this.department,
-  });
+  const DepartmentCardWidget({super.key, required this.department});
 
   @override
   Widget build(BuildContext context) {
@@ -32,7 +29,7 @@ class DepartmentCardWidget extends StatelessWidget {
       child: Material(
         color: Colors.transparent,
         child: InkWell(
-          onTap: () => menu.selectDepartment(department.id),
+          onTap: () => menu.selectDepartment(int.tryParse(department.id) ?? 0),
           borderRadius: BorderRadius.circular(20),
           child: Padding(
             padding: const EdgeInsets.all(24),
@@ -62,7 +59,7 @@ class DepartmentCardWidget extends StatelessWidget {
                   ),
                   child: Center(
                     child: Text(
-                      department.icon ?? '🍽️',
+                      department.icon,
                       style: const TextStyle(fontSize: 28),
                     ),
                   ),
@@ -80,16 +77,14 @@ class DepartmentCardWidget extends StatelessWidget {
                           color: theme.colorScheme.onSurface,
                         ),
                       ),
-                      if (department.description != null) ...[
-                        const SizedBox(height: 6),
-                        Text(
-                          department.description!,
-                          style: theme.textTheme.bodyMedium?.copyWith(
-                            color: theme.colorScheme.onSurface.withOpacity(0.7),
-                            height: 1.4,
-                          ),
+                      const SizedBox(height: 6),
+                      Text(
+                        'Department items',
+                        style: theme.textTheme.bodyMedium?.copyWith(
+                          color: theme.colorScheme.onSurface.withOpacity(0.7),
+                          height: 1.4,
                         ),
-                      ],
+                      ),
                     ],
                   ),
                 ),
