@@ -197,6 +197,57 @@ app.post('/api/auth/login', async (req, res) => {
   }
 });
 
+// Password-only authentication endpoint
+app.post('/api/auth/login-password', async (req, res) => {
+  try {
+    const { password } = req.body;
+    
+    if (!password) {
+      return res.status(400).json({ success: false, message: 'Password is required' });
+    }
+    
+    // Try to connect to database if not already connected
+    if (!pool) {
+      try {
+        console.log('🔌 Attempting to reconnect to database...');
+        pool = await sql.connect(config);
+        console.log('✅ Database reconnected successfully');
+      } catch (err) {
+        console.error('❌ Database reconnection failed:', err.message);
+        
+        // Fallback to mock authentication for testing
+        console.log('🔄 Using fallback authentication for testing...');
+        return handleMockPasswordAuthentication(password, res);
+      }
+    }
+    
+    console.log(`🔐 Authenticating with password: ${password}`);
+    
+    const result = await pool.request()
+      .input('password', sql.NVarChar, password)
+      .query(`
+        SELECT * FROM gen_salesman 
+        WHERE salesman_password = @password
+        AND (BlackListed = 0 OR BlackListed IS NULL)
+        AND (Suspend = 0 OR Suspend IS NULL)
+      `);
+    
+    if (result.recordset.length > 0) {
+      const salesman = result.recordset[0];
+      console.log(`✅ Password authentication successful for: ${salesman.SalesmanName}`);
+      res.json({ success: true, salesman: salesman });
+    } else {
+      console.log(`❌ Password authentication failed for password: ${password}`);
+      res.status(401).json({ success: false, message: 'Invalid password' });
+    }
+  } catch (err) {
+    console.error('Error authenticating with password:', err);
+    // Fallback to mock authentication on error
+    console.log('🔄 Using fallback authentication due to error...');
+    return handleMockPasswordAuthentication(req.body.password, res);
+  }
+});
+
 // Mock authentication fallback function
 function handleMockAuthentication(salesmanCode, password, res) {
   console.log(`🔐 Mock authentication attempt for salesman: ${salesmanCode}`);
@@ -223,6 +274,35 @@ function handleMockAuthentication(salesmanCode, password, res) {
   } else {
     console.log(`❌ Mock authentication failed for: ${salesmanCode}`);
     res.status(401).json({ success: false, message: 'Invalid credentials' });
+  }
+}
+
+// Mock password authentication fallback function
+function handleMockPasswordAuthentication(password, res) {
+  console.log(`🔐 Mock password authentication attempt for password: ${password}`);
+  
+  // Mock valid passwords for testing - you can add your real passwords here
+  const mockPasswords = {
+    'test123': { salesmanCode: 'S001', name: 'tenhg', role: 'Waiter' },
+    'maleesha123': { salesmanCode: 'S002', name: 'Maleesha', role: 'Manager' },
+    'password123': { salesmanCode: 'S003', name: 'Test User', role: 'Waiter' }
+  };
+  
+  const salesman = mockPasswords[password];
+  if (salesman) {
+    console.log(`✅ Mock password authentication successful for: ${salesman.name}`);
+    res.json({ 
+      success: true, 
+      salesman: {
+        SalesmanCode: salesman.salesmanCode,
+        SalesmanName: salesman.name,
+        SalesmanType: salesman.role,
+        Email: `${salesman.salesmanCode.toLowerCase()}@example.com`
+      }
+    });
+  } else {
+    console.log(`❌ Mock password authentication failed for password: ${password}`);
+    res.status(401).json({ success: false, message: 'Invalid password' });
   }
 }
 

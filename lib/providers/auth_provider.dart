@@ -64,6 +64,45 @@ class AuthProvider extends ChangeNotifier {
     }
   }
 
+  /// Login with password only (automatically finds salesman by password)
+  Future<bool> loginWithPassword(String password) async {
+    _isLoading = true;
+    _errorMessage = null;
+    notifyListeners();
+
+    try {
+      print('🔐 Attempting password-only login');
+
+      // Authenticate with API using password only
+      final response = await ApiService.authenticateWithPassword(password);
+
+      if (response['success'] == true) {
+        _currentSalesman = Salesman.fromJson(response['salesman']);
+        _isAuthenticated = true;
+        _errorMessage = null;
+
+        print('✅ Password login successful: ${_currentSalesman!.displayName}');
+        notifyListeners();
+        return true;
+      } else {
+        _errorMessage = response['message'] ?? 'Invalid password';
+        _isAuthenticated = false;
+        print('❌ Password login failed: ${_errorMessage}');
+        notifyListeners();
+        return false;
+      }
+    } catch (e) {
+      _errorMessage = 'Login failed: ${e.toString()}';
+      _isAuthenticated = false;
+      print('❌ Password login error: $e');
+      notifyListeners();
+      return false;
+    } finally {
+      _isLoading = false;
+      notifyListeners();
+    }
+  }
+
   /// Logout current salesman
   void logout() {
     _currentSalesman = null;

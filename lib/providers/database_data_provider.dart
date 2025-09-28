@@ -64,8 +64,12 @@ class DatabaseDataProvider extends ChangeNotifier {
     notifyListeners();
 
     try {
+      print('🔄 Loading departments from API...');
       _departments = await ApiService.getDepartments();
       print('✅ Loaded ${_departments.length} departments from database');
+      for (var dept in _departments) {
+        print('  - ${dept.name} (${dept.departmentCode})');
+      }
     } catch (e) {
       _errorMessage = 'Failed to load departments: $e';
       print('❌ Error loading departments: $e');
@@ -161,6 +165,7 @@ class DatabaseDataProvider extends ChangeNotifier {
     ]);
 
     print('✅ All data loaded from database');
+    print('📊 Final counts - Departments: ${_departments.length}, Menu Items: ${_menuItems.length}');
   }
 
   /// Clear error message
