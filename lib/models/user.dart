@@ -1,5 +1,43 @@
+class User {
+  final String id;
+  final String name;
+  final String email;
+  final String role;
+  final bool isActive;
+  final DateTime createdAt;
+
+  const User({
+    required this.id,
+    required this.name,
+    required this.email,
+    required this.role,
+    this.isActive = true,
+    required this.createdAt,
+  });
+
+  factory User.fromJson(Map<String, dynamic> json) {
+    return User(
+      id: json['id']?.toString() ?? '',
+      name: json['name']?.toString() ?? '',
+      email: json['email']?.toString() ?? '',
+      role: json['role']?.toString() ?? 'waiter',
+      isActive: json['isActive'] as bool? ?? true,
+      createdAt: DateTime.tryParse(json['createdAt']?.toString() ?? '') ?? DateTime.now(),
+    );
+  }
+
+  Map<String, dynamic> toJson() => {
+    'id': id,
+    'name': name,
+    'email': email,
+    'role': role,
+    'isActive': isActive,
+    'createdAt': createdAt.toIso8601String(),
+  };
+}
+
 class AppUser {
-  final int id;
+  final String id;
   final String email;
   final String role;
   final String? name;
@@ -17,13 +55,13 @@ class AppUser {
 
   factory AppUser.fromJson(Map<String, dynamic> json) {
     return AppUser(
-      id: json['id'] as int,
-      email: json['email'] as String,
-      role: json['role'] as String,
-      name: json['name'] as String?,
-      phone: json['phone'] as String?,
+      id: json['id']?.toString() ?? '',
+      email: json['email']?.toString() ?? '',
+      role: json['role']?.toString() ?? 'waiter',
+      name: json['name']?.toString(),
+      phone: json['phone']?.toString(),
       createdAt: json['createdAt'] != null
-          ? DateTime.parse(json['createdAt'] as String)
+          ? DateTime.tryParse(json['createdAt'] as String)
           : null,
     );
   }

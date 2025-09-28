@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import '../providers/menu_provider.dart';
 import '../providers/cart_provider.dart';
+import '../providers/database_data_provider.dart';
 import '../widgets/header_widget.dart';
 import '../widgets/order_table_widget.dart';
 import '../widgets/menu_toggle_widget.dart';
@@ -25,8 +26,10 @@ class _WaiterDashboardState extends State<WaiterDashboard> {
   @override
   void initState() {
     super.initState();
-    // Load menu data when the page initializes
+    // Load database data when the page initializes
     WidgetsBinding.instance.addPostFrameCallback((_) {
+      context.read<DatabaseDataProvider>().loadAllData();
+      // Also load menu data for compatibility
       context.read<MenuProvider>().loadMenuData();
     });
   }

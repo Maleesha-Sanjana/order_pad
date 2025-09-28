@@ -5,11 +5,11 @@ import 'pages/waiter_dashboard.dart';
 import 'providers/auth_provider.dart';
 import 'providers/menu_provider.dart';
 import 'providers/cart_provider.dart';
+import 'providers/database_data_provider.dart';
 
 void main() {
   runApp(const MyApp());
 }
-
 class MyApp extends StatelessWidget {
   const MyApp({super.key});
 
@@ -20,6 +20,7 @@ class MyApp extends StatelessWidget {
         ChangeNotifierProvider(create: (_) => AuthProvider()),
         ChangeNotifierProvider(create: (_) => MenuProvider()),
         ChangeNotifierProvider(create: (_) => CartProvider()),
+        ChangeNotifierProvider(create: (_) => DatabaseDataProvider()),
       ],
       child: MaterialApp(
         title: 'Waiter Order Pad',

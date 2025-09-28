@@ -12,10 +12,7 @@ class HeaderWidget extends StatelessWidget {
 
     return Container(
       margin: const EdgeInsets.fromLTRB(16, 16, 16, 8),
-      padding: const EdgeInsets.symmetric(
-        horizontal: 20,
-        vertical: 12,
-      ),
+      padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 12),
       decoration: BoxDecoration(
         gradient: LinearGradient(
           begin: Alignment.topLeft,
@@ -48,10 +45,17 @@ class HeaderWidget extends StatelessWidget {
               ),
               const SizedBox(height: 2),
               Text(
-                auth.currentUser?.name ?? 'Waiter',
+                auth.salesmanName,
                 style: theme.textTheme.titleLarge?.copyWith(
                   color: theme.colorScheme.onPrimary,
                   fontWeight: FontWeight.bold,
+                ),
+              ),
+              const SizedBox(height: 2),
+              Text(
+                auth.salesmanTitle,
+                style: theme.textTheme.bodySmall?.copyWith(
+                  color: theme.colorScheme.onPrimary.withOpacity(0.7),
                 ),
               ),
             ],
@@ -103,19 +107,16 @@ class HeaderWidget extends StatelessWidget {
               ),
               const SizedBox(width: 12),
               IconButton(
-                onPressed: () async {
-                  await auth.logout();
-                  if (context.mounted) {
-                    Navigator.of(context).pushReplacementNamed('/');
-                  }
+                onPressed: () {
+                  auth.logout();
+                  Navigator.of(context).pushReplacementNamed('/');
                 },
                 icon: Icon(
                   Icons.logout_rounded,
                   color: theme.colorScheme.onPrimary,
                 ),
                 style: IconButton.styleFrom(
-                  backgroundColor: theme.colorScheme.onPrimary
-                      .withOpacity(0.1),
+                  backgroundColor: theme.colorScheme.onPrimary.withOpacity(0.1),
                   shape: RoundedRectangleBorder(
                     borderRadius: BorderRadius.circular(12),
                   ),
