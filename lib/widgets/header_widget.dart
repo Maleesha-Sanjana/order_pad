@@ -32,66 +32,70 @@ class HeaderWidget extends StatelessWidget {
         ],
       ),
       child: Row(
-        mainAxisAlignment: MainAxisAlignment.spaceBetween,
         children: [
-          Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Text(
-                'Welcome back,',
-                style: theme.textTheme.bodyMedium?.copyWith(
-                  color: theme.colorScheme.onPrimary.withOpacity(0.8),
+          // Left side - User info
+          Expanded(
+            flex: 2,
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  auth.salesmanName,
+                  style: theme.textTheme.titleLarge?.copyWith(
+                    color: theme.colorScheme.onPrimary,
+                    fontWeight: FontWeight.bold,
+                  ),
+                  overflow: TextOverflow.ellipsis,
+                  maxLines: 1,
                 ),
-              ),
-              const SizedBox(height: 2),
-              Text(
-                auth.salesmanName,
-                style: theme.textTheme.titleLarge?.copyWith(
-                  color: theme.colorScheme.onPrimary,
-                  fontWeight: FontWeight.bold,
+                const SizedBox(height: 4),
+                Text(
+                  auth.currentSalesman?.companyName ?? 'Company',
+                  style: theme.textTheme.bodySmall?.copyWith(
+                    color: theme.colorScheme.onPrimary.withOpacity(0.7),
+                  ),
+                  overflow: TextOverflow.ellipsis,
+                  maxLines: 1,
                 ),
-              ),
-              const SizedBox(height: 2),
-              Text(
-                auth.salesmanTitle,
-                style: theme.textTheme.bodySmall?.copyWith(
-                  color: theme.colorScheme.onPrimary.withOpacity(0.7),
-                ),
-              ),
-            ],
+              ],
+            ),
           ),
+          // Spacer to push buttons to the right
+          const SizedBox(width: 16),
+          // Right side - Buttons
           Row(
+            mainAxisSize: MainAxisSize.min,
             children: [
               Container(
-                padding: const EdgeInsets.all(8),
+                padding: const EdgeInsets.all(6),
                 decoration: BoxDecoration(
                   color: theme.colorScheme.onPrimary.withOpacity(0.1),
-                  borderRadius: BorderRadius.circular(12),
+                  borderRadius: BorderRadius.circular(10),
                 ),
                 child: Icon(
                   Icons.restaurant,
                   color: theme.colorScheme.onPrimary,
-                  size: 24,
+                  size: 20,
                 ),
               ),
-              const SizedBox(width: 12),
+              const SizedBox(width: 8),
               // Company Logo
               Container(
-                height: 40,
-                width: 40,
+                height: 32,
+                width: 32,
                 decoration: BoxDecoration(
                   color: Colors.white,
-                  borderRadius: BorderRadius.circular(8),
+                  borderRadius: BorderRadius.circular(6),
                   boxShadow: [
                     BoxShadow(
                       color: Colors.black.withOpacity(0.1),
-                      blurRadius: 4,
-                      offset: const Offset(0, 2),
+                      blurRadius: 3,
+                      offset: const Offset(0, 1),
                     ),
                   ],
                 ),
                 child: ClipRRect(
-                  borderRadius: BorderRadius.circular(8),
+                  borderRadius: BorderRadius.circular(6),
                   child: Image.asset(
                     'assets/jazz.png',
                     fit: BoxFit.contain,
@@ -99,26 +103,32 @@ class HeaderWidget extends StatelessWidget {
                       return Icon(
                         Icons.business,
                         color: theme.colorScheme.primary,
-                        size: 24,
+                        size: 18,
                       );
                     },
                   ),
                 ),
               ),
-              const SizedBox(width: 12),
-              IconButton(
-                onPressed: () {
-                  auth.logout();
-                  Navigator.of(context).pushReplacementNamed('/');
-                },
-                icon: Icon(
-                  Icons.logout_rounded,
-                  color: theme.colorScheme.onPrimary,
+              const SizedBox(width: 8),
+              Container(
+                decoration: BoxDecoration(
+                  color: theme.colorScheme.onPrimary.withOpacity(0.1),
+                  borderRadius: BorderRadius.circular(10),
                 ),
-                style: IconButton.styleFrom(
-                  backgroundColor: theme.colorScheme.onPrimary.withOpacity(0.1),
-                  shape: RoundedRectangleBorder(
-                    borderRadius: BorderRadius.circular(12),
+                child: IconButton(
+                  onPressed: () {
+                    auth.logout();
+                    Navigator.of(context).pushReplacementNamed('/');
+                  },
+                  icon: Icon(
+                    Icons.logout_rounded,
+                    color: theme.colorScheme.onPrimary,
+                    size: 20,
+                  ),
+                  padding: const EdgeInsets.all(6),
+                  constraints: const BoxConstraints(
+                    minWidth: 32,
+                    minHeight: 32,
                   ),
                 ),
               ),

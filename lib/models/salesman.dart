@@ -31,6 +31,8 @@ class Salesman {
   final DateTime? editedDate;
   final String? editedUser;
   final String? salesmanPassword;
+  final String? locationDescription;
+  final String? companyCode;
 
   const Salesman({
     required this.idx,
@@ -65,6 +67,8 @@ class Salesman {
     this.editedDate,
     this.editedUser,
     this.salesmanPassword,
+    this.locationDescription,
+    this.companyCode,
   });
 
   factory Salesman.fromJson(Map<String, dynamic> json) {
@@ -119,6 +123,8 @@ class Salesman {
       editedDate: safeParseDateTime(json['Edited_Date']),
       editedUser: json['Edited_User']?.toString(),
       salesmanPassword: json['salesman_password']?.toString(),
+      locationDescription: json['LocationDescription']?.toString(),
+      companyCode: json['CompanyCode']?.toString(),
     );
   }
 
@@ -156,6 +162,8 @@ class Salesman {
       'Edited_Date': editedDate?.toIso8601String(),
       'Edited_User': editedUser,
       'salesman_password': salesmanPassword,
+      'LocationDescription': locationDescription,
+      'CompanyCode': companyCode,
     };
   }
 
@@ -173,5 +181,10 @@ class Salesman {
   // Helper method to get title
   String get title {
     return salesmanTitle ?? 'Salesman';
+  }
+
+  // Helper method to get company name (location description)
+  String get companyName {
+    return locationDescription ?? 'Company';
   }
 }

@@ -94,19 +94,19 @@ class _WaiterDashboardState extends State<WaiterDashboard> {
                   isRoomService: cart.serviceType?.name == 'roomService',
                 ),
 
-              const SizedBox(height: 8),
+              const SizedBox(height: 4),
 
               // Search Bar (show in menu mode or takeaway)
               if (_isMenuMode || cart.serviceType?.name == 'takeaway')
                 const SearchBarWidget(),
 
-              const SizedBox(height: 4),
+              const SizedBox(height: 2),
 
               // Breadcrumb (show in menu mode or takeaway)
               if (_isMenuMode || cart.serviceType?.name == 'takeaway')
                 const BreadcrumbWidget(),
 
-              const SizedBox(height: 4),
+              const SizedBox(height: 2),
 
               // Content Section
               Expanded(
