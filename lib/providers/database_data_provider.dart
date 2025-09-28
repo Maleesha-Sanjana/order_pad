@@ -94,6 +94,28 @@ class DatabaseDataProvider extends ChangeNotifier {
     }
   }
 
+  /// Load products for a specific sub-department
+  Future<void> loadProductsBySubDepartment(String subDepartmentCode) async {
+    _isLoadingMenuItems = true;
+    _errorMessage = null;
+    notifyListeners();
+
+    try {
+      print('🔄 Loading products for sub-department: $subDepartmentCode');
+      _menuItems = await ApiService.getProductsBySubDepartment(subDepartmentCode);
+      print('✅ Loaded ${_menuItems.length} products for sub-department $subDepartmentCode');
+      for (var item in _menuItems) {
+        print('  - ${item.name} (Rs. ${item.price})');
+      }
+    } catch (e) {
+      _errorMessage = 'Failed to load products: $e';
+      print('❌ Error loading products for sub-department: $e');
+    }
+
+    _isLoadingMenuItems = false;
+    notifyListeners();
+  }
+
   /// Load all users from database
   Future<void> loadUsers() async {
     _isLoadingUsers = true;

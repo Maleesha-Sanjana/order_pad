@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import '../providers/menu_provider.dart';
+import '../providers/database_data_provider.dart';
 import '../models/sub_department.dart';
 
 class SubDepartmentCardWidget extends StatelessWidget {
@@ -12,6 +13,7 @@ class SubDepartmentCardWidget extends StatelessWidget {
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
     final menu = context.watch<MenuProvider>();
+    final databaseData = context.watch<DatabaseDataProvider>();
 
     return Container(
       margin: const EdgeInsets.only(bottom: 16),
@@ -29,8 +31,14 @@ class SubDepartmentCardWidget extends StatelessWidget {
       child: Material(
         color: Colors.transparent,
         child: InkWell(
-          onTap: () =>
-              menu.selectSubDepartment(int.tryParse(subDepartment.id) ?? 0),
+          onTap: () async {
+            final subDepartmentId = int.tryParse(subDepartment.id) ?? 0;
+            print('📁 Sub-department clicked: ${subDepartment.name} (${subDepartment.subDepartmentCode})');
+            menu.selectSubDepartment(subDepartmentId);
+            // Load products for this sub-department
+            print('🍽️ Loading products for sub-department: ${subDepartment.subDepartmentCode}');
+            await databaseData.loadProductsBySubDepartment(subDepartment.subDepartmentCode);
+          },
           borderRadius: BorderRadius.circular(18),
           child: Padding(
             padding: const EdgeInsets.all(20),
@@ -73,14 +81,6 @@ class SubDepartmentCardWidget extends StatelessWidget {
                         style: theme.textTheme.titleMedium?.copyWith(
                           fontWeight: FontWeight.bold,
                           color: theme.colorScheme.onSurface,
-                        ),
-                      ),
-                      const SizedBox(height: 4),
-                      Text(
-                        'Sub-department items',
-                        style: theme.textTheme.bodySmall?.copyWith(
-                          color: theme.colorScheme.onSurface.withOpacity(0.7),
-                          height: 1.3,
                         ),
                       ),
                     ],
