@@ -116,6 +116,53 @@ class ContentWidget extends StatelessWidget {
       '📁 Building sub-departments list: ${subDepartments.length} sub-departments for department ${menu.selectedDepartmentId}',
     );
 
+    // Show empty state if no sub-departments
+    if (subDepartments.isEmpty) {
+      return RefreshIndicator(
+        onRefresh: () => databaseData.refreshAllData(),
+        child: SingleChildScrollView(
+          physics: const AlwaysScrollableScrollPhysics(),
+          child: Container(
+            height: 400,
+            padding: const EdgeInsets.all(32),
+            child: Column(
+              mainAxisAlignment: MainAxisAlignment.center,
+              children: [
+                Icon(
+                  Icons.folder_open_outlined,
+                  size: 64,
+                  color: theme.colorScheme.outline.withOpacity(0.5),
+                ),
+                const SizedBox(height: 16),
+                Text(
+                  'No Sub-Departments',
+                  style: theme.textTheme.headlineSmall?.copyWith(
+                    color: theme.colorScheme.onSurface,
+                    fontWeight: FontWeight.w600,
+                  ),
+                ),
+                const SizedBox(height: 8),
+                Text(
+                  'This department doesn\'t have any sub-categories yet.',
+                  style: theme.textTheme.bodyMedium?.copyWith(
+                    color: theme.colorScheme.outline,
+                  ),
+                  textAlign: TextAlign.center,
+                ),
+                const SizedBox(height: 16),
+                Text(
+                  'Pull down to refresh',
+                  style: theme.textTheme.bodySmall?.copyWith(
+                    color: theme.colorScheme.outline.withOpacity(0.7),
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ),
+      );
+    }
+
     return RefreshIndicator(
       onRefresh: () => databaseData.refreshAllData(),
       child: ListView.builder(
@@ -146,6 +193,53 @@ class ContentWidget extends StatelessWidget {
       );
     }
 
+    // Show empty state if no items
+    if (items.isEmpty) {
+      return RefreshIndicator(
+        onRefresh: () => databaseData.refreshAllData(),
+        child: SingleChildScrollView(
+          physics: const AlwaysScrollableScrollPhysics(),
+          child: Container(
+            height: 400,
+            padding: const EdgeInsets.all(32),
+            child: Column(
+              mainAxisAlignment: MainAxisAlignment.center,
+              children: [
+                Icon(
+                  Icons.restaurant_menu_outlined,
+                  size: 64,
+                  color: theme.colorScheme.outline.withOpacity(0.5),
+                ),
+                const SizedBox(height: 16),
+                Text(
+                  'No Menu Items',
+                  style: theme.textTheme.headlineSmall?.copyWith(
+                    color: theme.colorScheme.onSurface,
+                    fontWeight: FontWeight.w600,
+                  ),
+                ),
+                const SizedBox(height: 8),
+                Text(
+                  'This sub-department doesn\'t have any items available yet.',
+                  style: theme.textTheme.bodyMedium?.copyWith(
+                    color: theme.colorScheme.outline,
+                  ),
+                  textAlign: TextAlign.center,
+                ),
+                const SizedBox(height: 16),
+                Text(
+                  'Pull down to refresh',
+                  style: theme.textTheme.bodySmall?.copyWith(
+                    color: theme.colorScheme.outline.withOpacity(0.7),
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ),
+      );
+    }
+
     return RefreshIndicator(
       onRefresh: () => databaseData.refreshAllData(),
       child: ListView.builder(
@@ -162,6 +256,53 @@ class ContentWidget extends StatelessWidget {
   Widget _buildSearchResults(ThemeData theme, List<FoodItem> items) {
     return Consumer<DatabaseDataProvider>(
       builder: (context, databaseData, child) {
+        // Show empty state if no search results
+        if (items.isEmpty) {
+          return RefreshIndicator(
+            onRefresh: () => databaseData.refreshAllData(),
+            child: SingleChildScrollView(
+              physics: const AlwaysScrollableScrollPhysics(),
+              child: Container(
+                height: 400,
+                padding: const EdgeInsets.all(32),
+                child: Column(
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  children: [
+                    Icon(
+                      Icons.search_off_outlined,
+                      size: 64,
+                      color: theme.colorScheme.outline.withOpacity(0.5),
+                    ),
+                    const SizedBox(height: 16),
+                    Text(
+                      'No Results Found',
+                      style: theme.textTheme.headlineSmall?.copyWith(
+                        color: theme.colorScheme.onSurface,
+                        fontWeight: FontWeight.w600,
+                      ),
+                    ),
+                    const SizedBox(height: 8),
+                    Text(
+                      'Try searching with different keywords or check your spelling.',
+                      style: theme.textTheme.bodyMedium?.copyWith(
+                        color: theme.colorScheme.outline,
+                      ),
+                      textAlign: TextAlign.center,
+                    ),
+                    const SizedBox(height: 16),
+                    Text(
+                      'Pull down to refresh',
+                      style: theme.textTheme.bodySmall?.copyWith(
+                        color: theme.colorScheme.outline.withOpacity(0.7),
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ),
+          );
+        }
+
         return RefreshIndicator(
           onRefresh: () => databaseData.refreshAllData(),
           child: ListView.builder(

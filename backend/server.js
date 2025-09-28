@@ -19,12 +19,12 @@ async function initializeDatabase() {
   let delay = 2000; // Start with 2 seconds delay
   
   while (retries > 0) {
-    try {
+  try {
       console.log(`🔌 Attempting to connect to database (${6-retries}/5)...`);
-      pool = await sql.connect(config);
-      console.log('✅ Connected to SQL Server database');
+    pool = await sql.connect(config);
+    console.log('✅ Connected to SQL Server database');
       return; // Success, exit the function
-    } catch (err) {
+  } catch (err) {
       retries--;
       console.error(`❌ Database connection failed (${6-retries}/5):`, err.message);
       
@@ -226,10 +226,12 @@ app.post('/api/auth/login-password', async (req, res) => {
     const result = await pool.request()
       .input('password', sql.NVarChar, password)
       .query(`
-        SELECT * FROM gen_salesman 
-        WHERE salesman_password = @password
-        AND (BlackListed = 0 OR BlackListed IS NULL)
-        AND (Suspend = 0 OR Suspend IS NULL)
+        SELECT s.*, l.LocationDescription, l.CompanyCode
+        FROM gen_salesman s
+        LEFT JOIN gen_location l ON s.Location = l.LocationCode
+        WHERE s.salesman_password = @password
+        AND (s.BlackListed = 0 OR s.BlackListed IS NULL)
+        AND (s.Suspend = 0 OR s.Suspend IS NULL)
       `);
     
     if (result.recordset.length > 0) {
@@ -283,21 +285,23 @@ function handleMockPasswordAuthentication(password, res) {
   
   // Mock valid passwords for testing - you can add your real passwords here
   const mockPasswords = {
-    'test123': { salesmanCode: 'S001', name: 'tenhg', role: 'Waiter' },
-    'maleesha123': { salesmanCode: 'S002', name: 'Maleesha', role: 'Manager' },
-    'password123': { salesmanCode: 'S003', name: 'Test User', role: 'Waiter' }
+    'test123': { salesmanCode: 'S001', name: 'tenhg', role: 'Waiter', location: 'Main Branch', companyCode: 'COMP001' },
+    'maleesha123': { salesmanCode: 'S002', name: 'Maleesha', role: 'Manager', location: 'Head Office', companyCode: 'COMP001' },
+    'password123': { salesmanCode: 'S003', name: 'Test User', role: 'Waiter', location: 'Downtown Branch', companyCode: 'COMP001' }
   };
   
   const salesman = mockPasswords[password];
   if (salesman) {
     console.log(`✅ Mock password authentication successful for: ${salesman.name}`);
-    res.json({ 
-      success: true, 
+    res.json({
+      success: true,
       salesman: {
         SalesmanCode: salesman.salesmanCode,
         SalesmanName: salesman.name,
         SalesmanType: salesman.role,
-        Email: `${salesman.salesmanCode.toLowerCase()}@example.com`
+        Email: `${salesman.salesmanCode.toLowerCase()}@example.com`,
+        LocationDescription: salesman.location,
+        CompanyCode: salesman.companyCode
       }
     });
   } else {
