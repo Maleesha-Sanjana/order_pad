@@ -12,7 +12,6 @@ class LandingPage extends StatefulWidget {
 class _LandingPageState extends State<LandingPage>
     with TickerProviderStateMixin {
   final _formKey = GlobalKey<FormState>();
-  final salesmanCodeController = TextEditingController();
   final passwordController = TextEditingController();
 
   late AnimationController _animationController;
@@ -59,7 +58,6 @@ class _LandingPageState extends State<LandingPage>
   void dispose() {
     _animationController.dispose();
     _gradientController.dispose();
-    salesmanCodeController.dispose();
     passwordController.dispose();
     super.dispose();
   }
@@ -69,11 +67,8 @@ class _LandingPageState extends State<LandingPage>
 
     final auth = context.read<AuthProvider>();
     try {
-      // Login with salesman code and password
-      final success = await auth.login(
-        salesmanCodeController.text.trim(),
-        passwordController.text,
-      );
+      // Login with password only
+      final success = await auth.loginWithPassword(passwordController.text);
 
       if (!mounted) return;
 
@@ -242,32 +237,12 @@ class _LandingPageState extends State<LandingPage>
                                   crossAxisAlignment:
                                       CrossAxisAlignment.stretch,
                                   children: [
-                                    // Salesman Code Field
-                                    TextFormField(
-                                      controller: salesmanCodeController,
-                                      decoration: const InputDecoration(
-                                        labelText: 'Salesman Code',
-                                        prefixIcon: Icon(Icons.person),
-                                        hintText: 'Enter your salesman code',
-                                      ),
-                                      textCapitalization:
-                                          TextCapitalization.characters,
-                                      validator: (value) {
-                                        if (value == null || value.isEmpty) {
-                                          return 'Please enter your salesman code';
-                                        }
-                                        if (value.length < 3) {
-                                          return 'Salesman code must be at least 3 characters';
-                                        }
-                                        return null;
-                                      },
-                                    ),
-                                    const SizedBox(height: 16),
                                     // Password Field
                                     TextFormField(
                                       controller: passwordController,
                                       decoration: InputDecoration(
                                         labelText: 'Password',
+                                        hintText: 'Enter your password',
                                         prefixIcon: const Icon(Icons.lock),
                                         suffixIcon: IconButton(
                                           icon: Icon(
