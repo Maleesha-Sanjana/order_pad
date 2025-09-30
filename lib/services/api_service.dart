@@ -6,7 +6,7 @@ import '../models/sub_department.dart';
 import '../models/salesman.dart';
 
 class ApiService {
-  static const String baseUrl = 'http://172.20.10.4:3000/api';
+  static const String baseUrl = 'http://localhost:3000/api';
 
   // Helper method to handle HTTP responses
   static Map<String, dynamic> _handleResponse(http.Response response) {
@@ -47,7 +47,9 @@ class ApiService {
         final data = json.decode(response.body) as List;
         return data.map((json) => SubDepartment.fromJson(json)).toList();
       } else {
-        throw Exception('Failed to load sub-departments: ${response.statusCode}');
+        throw Exception(
+          'Failed to load sub-departments: ${response.statusCode}',
+        );
       }
     } catch (e) {
       print('Error fetching sub-departments: $e');
@@ -83,7 +85,9 @@ class ApiService {
         final data = json.decode(response.body) as List;
         return data.map((json) => FoodItem.fromJson(json)).toList();
       } else {
-        throw Exception('Failed to load products by department: ${response.statusCode}');
+        throw Exception(
+          'Failed to load products by department: ${response.statusCode}',
+        );
       }
     } catch (e) {
       print('Error fetching products by department: $e');
@@ -102,7 +106,9 @@ class ApiService {
         final data = json.decode(response.body) as List;
         return data.map((json) => FoodItem.fromJson(json)).toList();
       } else {
-        throw Exception('Failed to load products by sub-department: ${response.statusCode}');
+        throw Exception(
+          'Failed to load products by sub-department: ${response.statusCode}',
+        );
       }
     } catch (e) {
       print('Error fetching products by sub-department: $e');
