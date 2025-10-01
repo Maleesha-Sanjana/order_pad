@@ -1,3 +1,5 @@
+// ignore_for_file: unused_element
+
 import 'dart:convert';
 import 'package:http/http.dart' as http;
 import '../models/food_item.dart';
@@ -6,7 +8,7 @@ import '../models/sub_department.dart';
 import '../models/salesman.dart';
 
 class ApiService {
-  static const String baseUrl = 'http://localhost:3000/api';
+  static const String baseUrl = 'http://172.20.10.3:3000/api';
 
   // Helper method to handle HTTP responses
   static Map<String, dynamic> _handleResponse(http.Response response) {

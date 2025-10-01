@@ -1,9 +1,9 @@
 module.exports = {
   // Database Configuration
-  server: '172.20.10.2',
+  server: 'localhost', // Changed to localhost for local Mac setup
   database: 'POS_SOLUTION',
   user: 'sa',
-  password: 'jbs2014',
+  password: 'Jbs@2014!', // Updated with new password
   port: 1433,
   options: {
     encrypt: false,

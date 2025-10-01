@@ -59,7 +59,6 @@ app.*.map.json
 **/ios/Runner/GeneratedPluginRegistrant.*
 
 # Generated files
-lib/generated_plugin_registrant.dart
 **/windows/flutter/generated_plugin_registrant.cc
 **/windows/flutter/generated_plugin_registrant.h
 **/windows/flutter/generated_plugins.cmake
@@ -107,7 +106,6 @@ coverage/
 !**/ios/**/default.perspectivev3
 
 # Web related
-lib/generated_plugin_registrant.dart
 
 # Windows related
 **/windows/flutter/generated_plugin_registrant.cc
