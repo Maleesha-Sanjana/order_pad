@@ -161,6 +161,7 @@ class ApiService {
   }
 
   // Password-only authentication
+
   static Future<Map<String, dynamic>> authenticateWithPassword(
     String password,
   ) async {

@@ -23,7 +23,7 @@ class CartProvider extends ChangeNotifier {
       return 0;
     }
   }
-  
+
   double get subtotal {
     try {
       return _items.fold(0.0, (sum, item) => sum + item.totalPrice);
@@ -32,15 +32,19 @@ class CartProvider extends ChangeNotifier {
       return 0.0;
     }
   }
-  
-  double get tax => subtotal * 0.15; // 15% tax (Sri Lankan VAT)
+
+  double get tax => 0.0; // No tax
   double get serviceCharge => subtotal * 0.10; // 10% service charge
-  double get total => subtotal + tax + serviceCharge;
+  double get total => subtotal + serviceCharge;
   bool get isEmpty => _items.isEmpty;
 
-  void addItem(FoodItem foodItem, {int quantity = 1, String? specialInstructions}) {
+  void addItem(
+    FoodItem foodItem, {
+    int quantity = 1,
+    String? specialInstructions,
+  }) {
     if (quantity <= 0) return;
-    
+
     try {
       final existingIndex = _items.indexWhere(
         (item) => item.foodItem.id == foodItem.id,
@@ -51,11 +55,13 @@ class CartProvider extends ChangeNotifier {
           quantity: _items[existingIndex].quantity + quantity,
         );
       } else {
-        _items.add(CartItem(
-          foodItem: foodItem,
-          quantity: quantity,
-          specialInstructions: specialInstructions,
-        ));
+        _items.add(
+          CartItem(
+            foodItem: foodItem,
+            quantity: quantity,
+            specialInstructions: specialInstructions,
+          ),
+        );
       }
       notifyListeners();
     } catch (e) {
@@ -87,7 +93,9 @@ class CartProvider extends ChangeNotifier {
       );
 
       if (existingIndex >= 0) {
-        _items[existingIndex] = _items[existingIndex].copyWith(quantity: quantity);
+        _items[existingIndex] = _items[existingIndex].copyWith(
+          quantity: quantity,
+        );
         notifyListeners();
       }
     } catch (e) {
@@ -104,7 +112,11 @@ class CartProvider extends ChangeNotifier {
     notifyListeners();
   }
 
-  void setCustomerInfo({String? name, String? tableNumber, String? seatNumber}) {
+  void setCustomerInfo({
+    String? name,
+    String? tableNumber,
+    String? seatNumber,
+  }) {
     _customerName = name;
     _tableNumber = tableNumber;
     _seatNumber = seatNumber;
@@ -116,18 +128,16 @@ class CartProvider extends ChangeNotifier {
     notifyListeners();
   }
 
-  bool get canCreateOrder => 
-      !isEmpty && 
-      _tableNumber != null && 
+  bool get canCreateOrder =>
+      !isEmpty &&
+      _tableNumber != null &&
       _tableNumber!.isNotEmpty &&
-      _seatNumber != null && 
+      _seatNumber != null &&
       _seatNumber!.isNotEmpty;
 
   int getItemQuantity(FoodItem foodItem) {
     try {
-      final item = _items.firstWhere(
-        (item) => item.foodItem.id == foodItem.id,
-      );
+      final item = _items.firstWhere((item) => item.foodItem.id == foodItem.id);
       return item.quantity;
     } catch (e) {
       return 0;
