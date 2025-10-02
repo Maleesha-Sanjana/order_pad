@@ -3,6 +3,8 @@ import 'package:provider/provider.dart';
 import '../providers/menu_provider.dart';
 import '../providers/cart_provider.dart';
 import '../providers/database_data_provider.dart';
+import '../providers/auth_provider.dart';
+import '../models/suspend_order.dart';
 import '../widgets/header_widget.dart';
 import '../widgets/order_table_widget.dart';
 import '../widgets/menu_toggle_widget.dart';
@@ -461,7 +463,7 @@ class _WaiterDashboardState extends State<WaiterDashboard> {
               child: const Text('Cancel'),
             ),
             ElevatedButton(
-              onPressed: () {
+              onPressed: () async {
                 if (cart.serviceType == null) {
                   ScaffoldMessenger.of(context).showSnackBar(
                     const SnackBar(
@@ -484,7 +486,16 @@ class _WaiterDashboardState extends State<WaiterDashboard> {
 
                 Navigator.of(context).pop();
 
-                // Show success dialog
+                // Capture cart items and other data before clearing
+                final cartItems = List.from(cart.items);
+                final tableNumber = seatController.text.trim();
+                final serviceType = cart.serviceType;
+                final customerName = cart.customerName;
+
+                // Clear the cart immediately
+                cart.clearCart();
+
+                // Show success dialog immediately
                 showDialog(
                   context: context,
                   barrierDismissible: false,
@@ -496,7 +507,7 @@ class _WaiterDashboardState extends State<WaiterDashboard> {
                       children: [
                         Icon(
                           Icons.check_circle_rounded,
-                          color: theme.colorScheme.primary,
+                          color: Colors.green,
                           size: 28,
                         ),
                         const SizedBox(width: 12),
@@ -511,20 +522,17 @@ class _WaiterDashboardState extends State<WaiterDashboard> {
                         ),
                         const SizedBox(height: 12),
                         Text(
-                          'Seat: ${seatController.text.trim()}',
+                          'Receipt: RCP${DateTime.now().millisecondsSinceEpoch}',
                           style: const TextStyle(fontWeight: FontWeight.w600),
                         ),
-                        if (cart.serviceType != null) ...[
+                        Text(
+                          'Seat: $tableNumber',
+                          style: const TextStyle(fontWeight: FontWeight.w600),
+                        ),
+                        if (serviceType != null) ...[
                           const SizedBox(height: 8),
                           Text(
-                            'Service: ${cart.serviceType!.displayName}',
-                            style: const TextStyle(fontWeight: FontWeight.w600),
-                          ),
-                        ],
-                        if (remarksController.text.trim().isNotEmpty) ...[
-                          const SizedBox(height: 8),
-                          Text(
-                            'Remarks: ${remarksController.text.trim()}',
+                            'Service: ${serviceType.displayName}',
                             style: const TextStyle(fontWeight: FontWeight.w600),
                           ),
                         ],
@@ -532,14 +540,19 @@ class _WaiterDashboardState extends State<WaiterDashboard> {
                     ),
                     actions: [
                       ElevatedButton(
-                        onPressed: () {
-                          cart.clearCart();
-                          Navigator.of(context).pop();
-                        },
+                        onPressed: () => Navigator.of(context).pop(),
                         child: const Text('OK'),
                       ),
                     ],
                   ),
+                );
+
+                // Process order in background with captured data
+                _processOrderInBackground(
+                  context,
+                  cartItems,
+                  tableNumber,
+                  customerName,
                 );
               },
               style: ElevatedButton.styleFrom(
@@ -555,5 +568,103 @@ class _WaiterDashboardState extends State<WaiterDashboard> {
         ),
       ),
     );
+  }
+
+  void _processOrderInBackground(
+    BuildContext context,
+    List cartItems,
+    String tableNumber,
+    String? customerName,
+  ) async {
+    print('🔄 Starting background order processing...');
+    print('📋 Cart items count: ${cartItems.length}');
+    print('🏷️ Table: $tableNumber');
+    print('👤 Customer: $customerName');
+    
+    if (cartItems.isEmpty) {
+      print('❌ No cart items to process!');
+      return;
+    }
+
+    try {
+      final databaseData = context.read<DatabaseDataProvider>();
+      final authProvider = context.read<AuthProvider>();
+      
+      print('👤 Salesman: ${authProvider.salesmanName}');
+      print('🔑 Salesman Code: ${authProvider.salesmanCode}');
+
+      // Convert cart items to suspend orders and add to database
+      for (int i = 0; i < cartItems.length; i++) {
+        final cartItem = cartItems[i];
+        print('➕ Processing item ${i + 1}/${cartItems.length}:');
+        print('   - Name: ${cartItem.foodItem.name}');
+        print('   - ID: ${cartItem.foodItem.id}');
+        print('   - Price: ${cartItem.foodItem.price}');
+        print('   - Quantity: ${cartItem.quantity}');
+        print('   - Total: ${cartItem.totalPrice}');
+
+        final suspendOrder = SuspendOrder(
+          productCode: cartItem.foodItem.id,
+          productDescription: cartItem.foodItem.name,
+          unit: 'piece',
+          costPrice: cartItem.foodItem.price * 0.7,
+          unitPrice: cartItem.foodItem.price,
+          wholeSalePrice: cartItem.foodItem.price * 0.85,
+          qty: cartItem.quantity.toDouble(),
+          amount: cartItem.totalPrice,
+          salesMan: authProvider.salesmanName.isNotEmpty
+              ? authProvider.salesmanName
+              : authProvider.salesmanCode,
+          table: tableNumber,
+          customer: customerName ?? 'Guest',
+          kotPrint: false,
+        );
+
+        print('📦 Created SuspendOrder object:');
+        print('   - ProductCode: ${suspendOrder.productCode}');
+        print('   - ProductDescription: ${suspendOrder.productDescription}');
+        print('   - UnitPrice: ${suspendOrder.unitPrice}');
+        print('   - Qty: ${suspendOrder.qty}');
+        print('   - Amount: ${suspendOrder.amount}');
+        print('   - SalesMan: ${suspendOrder.salesMan}');
+        print('   - Table: ${suspendOrder.table}');
+
+        try {
+          print('🔄 Calling databaseData.addToCart...');
+          await databaseData.addToCart(suspendOrder);
+          print('✅ Item ${i + 1} added successfully to database');
+        } catch (itemError) {
+          print('❌ Failed to add item ${i + 1}: $itemError');
+          print('❌ Item error details: ${itemError.toString()}');
+          // Continue with other items instead of stopping
+        }
+      }
+
+      // Confirm the order
+      print('🔄 Confirming order for table: $tableNumber');
+      try {
+        final result = await databaseData.confirmOrder(
+          tableNumber,
+          receiptNo: 'RCP${DateTime.now().millisecondsSinceEpoch}',
+          salesMan: authProvider.salesmanName.isNotEmpty
+              ? authProvider.salesmanName
+              : authProvider.salesmanCode,
+        );
+
+        print('📊 Confirm order result: $result');
+        if (result != null && result['success'] == true) {
+          print('✅ Background order processing completed successfully');
+          print('📄 Receipt: ${result['receiptNo']}');
+        } else {
+          print('❌ Background order confirmation failed - result: $result');
+        }
+      } catch (confirmError) {
+        print('❌ Error confirming order: $confirmError');
+        print('❌ Confirm error details: ${confirmError.toString()}');
+      }
+    } catch (e, stackTrace) {
+      print('❌ Error in background order processing: $e');
+      print('❌ Stack trace: $stackTrace');
+    }
   }
 }
