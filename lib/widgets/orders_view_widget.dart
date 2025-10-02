@@ -11,9 +11,11 @@ class OrdersViewWidget extends StatelessWidget {
 
     return Consumer<DatabaseDataProvider>(
       builder: (context, databaseData, child) {
-        // Load orders if not already loaded
+        // Load orders if not already loaded - use post frame callback to avoid setState during build
         if (databaseData.orders.isEmpty && !databaseData.isLoadingOrders) {
-          databaseData.loadOrders();
+          WidgetsBinding.instance.addPostFrameCallback((_) {
+            databaseData.loadOrders();
+          });
         }
 
         return Container(
