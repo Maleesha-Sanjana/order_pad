@@ -310,6 +310,47 @@ function handleMockPasswordAuthentication(password, res) {
   }
 }
 
+// Get all tables
+app.get('/api/tables', async (req, res) => {
+  try {
+    if (!pool) {
+      return res.status(503).json({ error: 'Database not connected' });
+    }
+    
+    const result = await pool.request().query(`
+      SELECT idx, TableCode, TableName, Location 
+      FROM inv_tables 
+      ORDER BY TableCode
+    `);
+    
+    console.log(`✅ Loaded ${result.recordset.length} tables from inv_tables`);
+    res.json(result.recordset);
+  } catch (err) {
+    console.error('Error fetching tables:', err);
+    res.status(500).json({ error: 'Failed to fetch tables' });
+  }
+});
+
+// Get chairs (5 chairs per table with ch1, ch2... naming)
+app.get('/api/chairs', async (req, res) => {
+  try {
+    // All tables have only 5 chairs with ch1, ch2, ch3, ch4, ch5 naming
+    const chairs = [
+      { chairCode: 'ch1', chairName: 'ch1' },
+      { chairCode: 'ch2', chairName: 'ch2' },
+      { chairCode: 'ch3', chairName: 'ch3' },
+      { chairCode: 'ch4', chairName: 'ch4' },
+      { chairCode: 'ch5', chairName: 'ch5' }
+    ];
+    
+    console.log(`✅ Loaded ${chairs.length} chair options (ch1-ch5)`);
+    res.json(chairs);
+  } catch (err) {
+    console.error('Error fetching chairs:', err);
+    res.status(500).json({ error: 'Failed to fetch chairs' });
+  }
+});
+
 // Get all salesmen
 app.get('/api/salesmen', async (req, res) => {
   try {
@@ -461,6 +502,7 @@ app.post('/api/suspend-orders', async (req, res) => {
       .input('amount', sql.Decimal(18, 2), amount)
       .input('salesMan', sql.NVarChar, salesMan)
       .input('table', sql.NVarChar, table)
+      .input('chair', sql.NVarChar, chair || null)
       .input('freeQty', sql.Decimal(18, 2), freeQty || 0)
       .input('discPer', sql.Decimal(18, 2), discPer || 0)
       .input('discAmount', sql.Decimal(18, 2), discAmount || 0)
@@ -469,10 +511,10 @@ app.post('/api/suspend-orders', async (req, res) => {
       .input('customer', sql.NVarChar, customer || null)
       .query(`
         INSERT INTO inv_suspend (
-          ProductCode, ProductDescription, UnitPrice, Qty, Amount, SalesMan, [Table],
+          ProductCode, ProductDescription, UnitPrice, Qty, Amount, SalesMan, [Table], Chair,
           FreeQty, DiscPer, DiscAmount, LocaCode, SerialNo, Customer
         ) VALUES (
-          @productCode, @productDescription, @unitPrice, @qty, @amount, @salesMan, @table,
+          @productCode, @productDescription, @unitPrice, @qty, @amount, @salesMan, @table, @chair,
           @freeQty, @discPer, @discAmount, @locaCode, @serialNo, @customer
         );
         SELECT SCOPE_IDENTITY() as id;
@@ -641,10 +683,58 @@ app.post('/api/orders/confirm/:tableNumber', async (req, res) => {
       return res.status(404).json({ error: 'No pending orders found for this table' });
     }
     
+    // Get and increment the order counter
+    let orderNumber;
+    try {
+      // Try to get current counter value
+      const counterResult = await pool.request().query(`
+        SELECT counter_value FROM order_counter WHERE counter_name = 'daily_orders'
+      `);
+      
+      if (counterResult.recordset.length > 0) {
+        // Increment existing counter
+        orderNumber = counterResult.recordset[0].counter_value + 1;
+        await pool.request()
+          .input('newValue', sql.Int, orderNumber)
+          .query(`
+            UPDATE order_counter 
+            SET counter_value = @newValue, last_updated = GETDATE()
+            WHERE counter_name = 'daily_orders'
+          `);
+      } else {
+        // Create counter table and initialize
+        orderNumber = 1;
+        await pool.request().query(`
+          IF NOT EXISTS (SELECT * FROM sysobjects WHERE name='order_counter' AND xtype='U')
+          CREATE TABLE order_counter (
+            counter_name NVARCHAR(50) PRIMARY KEY,
+            counter_value INT NOT NULL,
+            last_updated DATETIME DEFAULT GETDATE()
+          )
+        `);
+        
+        await pool.request()
+          .input('counterValue', sql.Int, orderNumber)
+          .query(`
+            INSERT INTO order_counter (counter_name, counter_value, last_updated)
+            VALUES ('daily_orders', @counterValue, GETDATE())
+          `);
+      }
+      
+      console.log(`📊 Order counter incremented to: ${orderNumber}`);
+    } catch (counterErr) {
+      console.error('Error managing order counter:', counterErr);
+      // Continue without counter if it fails
+      orderNumber = Date.now();
+    }
+    
+    // Generate receipt number with incremented counter
+    const finalReceiptNo = receiptNo || `RCP${orderNumber.toString().padStart(6, '0')}`;
+    
     // Update suspend orders with receipt number and mark as confirmed
     await pool.request()
       .input('tableNumber', sql.NVarChar, tableNumber)
-      .input('receiptNo', sql.NVarChar, receiptNo || `RCP${Date.now()}`)
+      .input('receiptNo', sql.NVarChar, finalReceiptNo)
       .input('salesMan', sql.NVarChar, salesMan)
       .query(`
         UPDATE inv_suspend 
@@ -652,15 +742,101 @@ app.post('/api/orders/confirm/:tableNumber', async (req, res) => {
         WHERE [Table] = @tableNumber
       `);
     
-    console.log(`✅ Confirmed order for table ${tableNumber} with receipt ${receiptNo}`);
+    console.log(`✅ Confirmed order for table ${tableNumber} with receipt ${finalReceiptNo}`);
+    console.log(`📈 Order number: ${orderNumber}`);
+    
     res.json({ 
       success: true, 
-      receiptNo: receiptNo || `RCP${Date.now()}`,
+      receiptNo: finalReceiptNo,
+      orderNumber: orderNumber,
       orderCount: suspendOrders.recordset.length 
     });
   } catch (err) {
     console.error('Error confirming order:', err);
     res.status(500).json({ error: 'Failed to confirm order' });
+  }
+});
+
+// Get current order counter
+app.get('/api/counter/:counterName', async (req, res) => {
+  try {
+    if (!pool) {
+      return res.status(503).json({ error: 'Database not connected' });
+    }
+    
+    const { counterName } = req.params;
+    
+    const result = await pool.request()
+      .input('counterName', sql.NVarChar, counterName)
+      .query(`
+        SELECT counter_value, last_updated FROM order_counter 
+        WHERE counter_name = @counterName
+      `);
+    
+    if (result.recordset.length > 0) {
+      res.json({ 
+        success: true, 
+        counterName: counterName,
+        value: result.recordset[0].counter_value,
+        lastUpdated: result.recordset[0].last_updated
+      });
+    } else {
+      res.json({ 
+        success: true, 
+        counterName: counterName,
+        value: 0,
+        lastUpdated: null
+      });
+    }
+  } catch (err) {
+    console.error('Error getting counter:', err);
+    res.status(500).json({ error: 'Failed to get counter' });
+  }
+});
+
+// Reset order counter
+app.post('/api/counter/:counterName/reset', async (req, res) => {
+  try {
+    if (!pool) {
+      return res.status(503).json({ error: 'Database not connected' });
+    }
+    
+    const { counterName } = req.params;
+    const { resetValue = 0 } = req.body;
+    
+    // Create table if it doesn't exist
+    await pool.request().query(`
+      IF NOT EXISTS (SELECT * FROM sysobjects WHERE name='order_counter' AND xtype='U')
+      CREATE TABLE order_counter (
+        counter_name NVARCHAR(50) PRIMARY KEY,
+        counter_value INT NOT NULL,
+        last_updated DATETIME DEFAULT GETDATE()
+      )
+    `);
+    
+    // Update or insert counter
+    await pool.request()
+      .input('counterName', sql.NVarChar, counterName)
+      .input('resetValue', sql.Int, resetValue)
+      .query(`
+        IF EXISTS (SELECT 1 FROM order_counter WHERE counter_name = @counterName)
+          UPDATE order_counter 
+          SET counter_value = @resetValue, last_updated = GETDATE()
+          WHERE counter_name = @counterName
+        ELSE
+          INSERT INTO order_counter (counter_name, counter_value, last_updated)
+          VALUES (@counterName, @resetValue, GETDATE())
+      `);
+    
+    console.log(`🔄 Counter '${counterName}' reset to: ${resetValue}`);
+    res.json({ 
+      success: true, 
+      counterName: counterName,
+      newValue: resetValue
+    });
+  } catch (err) {
+    console.error('Error resetting counter:', err);
+    res.status(500).json({ error: 'Failed to reset counter' });
   }
 });
 
