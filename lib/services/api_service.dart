@@ -185,6 +185,48 @@ class ApiService {
     }
   }
 
+  static Future<List<Map<String, dynamic>>> getTables() async {
+    try {
+      print('🔄 API: Fetching tables from inv_tables...');
+      final response = await http.get(Uri.parse('$baseUrl/tables'));
+
+      print('📊 API: Tables response status: ${response.statusCode}');
+      
+      if (response.statusCode == 200) {
+        final List<dynamic> data = json.decode(response.body);
+        print('✅ API: Loaded ${data.length} tables from database');
+        return data.cast<Map<String, dynamic>>();
+      } else {
+        print('❌ API: Failed to fetch tables: ${response.statusCode}');
+        throw Exception('Failed to fetch tables: ${response.statusCode}');
+      }
+    } catch (e) {
+      print('❌ API: Error fetching tables: $e');
+      rethrow;
+    }
+  }
+
+  static Future<List<Map<String, dynamic>>> getChairs() async {
+    try {
+      print('🔄 API: Fetching chair options...');
+      final response = await http.get(Uri.parse('$baseUrl/chairs'));
+
+      print('📊 API: Chairs response status: ${response.statusCode}');
+      
+      if (response.statusCode == 200) {
+        final List<dynamic> data = json.decode(response.body);
+        print('✅ API: Loaded ${data.length} chair options');
+        return data.cast<Map<String, dynamic>>();
+      } else {
+        print('❌ API: Failed to fetch chairs: ${response.statusCode}');
+        throw Exception('Failed to fetch chairs: ${response.statusCode}');
+      }
+    } catch (e) {
+      print('❌ API: Error fetching chairs: $e');
+      rethrow;
+    }
+  }
+
   static Future<List<Salesman>> getSalesmen() async {
     try {
       final response = await http.get(Uri.parse('$baseUrl/salesmen'));

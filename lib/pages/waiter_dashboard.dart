@@ -5,6 +5,7 @@ import '../providers/cart_provider.dart';
 import '../providers/database_data_provider.dart';
 import '../providers/auth_provider.dart';
 import '../models/suspend_order.dart';
+import '../services/api_service.dart';
 import '../widgets/header_widget.dart';
 import '../widgets/order_table_widget.dart';
 import '../widgets/menu_toggle_widget.dart';
@@ -281,291 +282,452 @@ class _WaiterDashboardState extends State<WaiterDashboard> {
     ThemeData theme,
     CartProvider cart,
   ) {
-    final seatController = TextEditingController();
     final remarksController = TextEditingController();
+    List<Map<String, dynamic>> tables = [];
+    List<Map<String, dynamic>> chairs = [];
+    String? selectedTable;
+    String? selectedChair;
+    bool isLoadingTables = true;
+    bool isLoadingChairs = false;
 
     showDialog(
       context: context,
       barrierDismissible: false,
       builder: (context) => StatefulBuilder(
-        builder: (context, setState) => AlertDialog(
-          shape: RoundedRectangleBorder(
-            borderRadius: BorderRadius.circular(20),
-          ),
-          title: Row(
-            children: [
-              Icon(
-                Icons.restaurant_rounded,
-                color: theme.colorScheme.primary,
-                size: 28,
-              ),
-              const SizedBox(width: 12),
-              const Text('Order Details'),
-            ],
-          ),
-          content: SizedBox(
-            width: 350,
-            child: ConstrainedBox(
-              constraints: const BoxConstraints(maxHeight: 600),
-              child: SingleChildScrollView(
-                child: Column(
-                  mainAxisSize: MainAxisSize.min,
-                  children: [
-                    const Text(
-                      'Please provide the following details to complete the order:',
-                      style: TextStyle(fontSize: 14),
-                    ),
-                    const SizedBox(height: 20),
-                    // Service Type Display
-                    if (cart.serviceType != null) ...[
+        builder: (context, setState) {
+          // Load tables and chairs on first build
+          if (isLoadingTables && tables.isEmpty) {
+            // Load tables from inv_tables
+            ApiService.getTables()
+                .then((loadedTables) {
+                  if (context.mounted) {
+                    setState(() {
+                      tables = loadedTables;
+                      isLoadingTables = false;
+                    });
+                  }
+                })
+                .catchError((error) {
+                  if (context.mounted) {
+                    setState(() {
+                      isLoadingTables = false;
+                    });
+                    print('Error loading tables: $error');
+                  }
+                });
+
+            // Load chairs independently
+            ApiService.getChairs()
+                .then((loadedChairs) {
+                  if (context.mounted) {
+                    setState(() {
+                      chairs = loadedChairs;
+                      isLoadingChairs = false;
+                    });
+                  }
+                })
+                .catchError((error) {
+                  if (context.mounted) {
+                    setState(() {
+                      isLoadingChairs = false;
+                    });
+                    print('Error loading chairs: $error');
+                  }
+                });
+          }
+
+          return AlertDialog(
+            shape: RoundedRectangleBorder(
+              borderRadius: BorderRadius.circular(20),
+            ),
+            title: Row(
+              children: [
+                Icon(
+                  Icons.restaurant_rounded,
+                  color: theme.colorScheme.primary,
+                  size: 28,
+                ),
+                const SizedBox(width: 12),
+                const Text('Order Details'),
+              ],
+            ),
+            content: SizedBox(
+              width: 320,
+              child: ConstrainedBox(
+                constraints: const BoxConstraints(maxHeight: 500),
+                child: SingleChildScrollView(
+                  child: Column(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      const Text(
+                        'Please provide the following details to complete the order:',
+                        style: TextStyle(fontSize: 14),
+                      ),
+                      const SizedBox(height: 20),
+                      // Service Type Display
+                      if (cart.serviceType != null) ...[
+                        Container(
+                          padding: const EdgeInsets.all(12),
+                          decoration: BoxDecoration(
+                            color: theme.colorScheme.primary.withOpacity(0.1),
+                            borderRadius: BorderRadius.circular(12),
+                            border: Border.all(
+                              color: theme.colorScheme.primary.withOpacity(0.3),
+                            ),
+                          ),
+                          child: Row(
+                            children: [
+                              Container(
+                                width: 40,
+                                height: 40,
+                                decoration: BoxDecoration(
+                                  color: theme.colorScheme.primary,
+                                  borderRadius: BorderRadius.circular(8),
+                                ),
+                                child: Center(
+                                  child: Text(
+                                    cart.serviceType!.icon,
+                                    style: const TextStyle(fontSize: 20),
+                                  ),
+                                ),
+                              ),
+                              const SizedBox(width: 12),
+                              Expanded(
+                                child: Column(
+                                  crossAxisAlignment: CrossAxisAlignment.start,
+                                  children: [
+                                    Text(
+                                      'Service Type',
+                                      style: TextStyle(
+                                        fontSize: 12,
+                                        color: theme.colorScheme.primary
+                                            .withOpacity(0.7),
+                                        fontWeight: FontWeight.w500,
+                                      ),
+                                    ),
+                                    Text(
+                                      cart.serviceType!.displayName,
+                                      style: TextStyle(
+                                        fontSize: 16,
+                                        color: theme.colorScheme.primary,
+                                        fontWeight: FontWeight.bold,
+                                      ),
+                                    ),
+                                  ],
+                                ),
+                              ),
+                            ],
+                          ),
+                        ),
+                        const SizedBox(height: 16),
+                      ],
+                      // Table Selection Dropdown
+                      Container(
+                        decoration: BoxDecoration(
+                          border: Border.all(color: Colors.grey.shade300),
+                          borderRadius: BorderRadius.circular(12),
+                        ),
+                        child: isLoadingTables
+                            ? const Padding(
+                                padding: EdgeInsets.all(16.0),
+                                child: Row(
+                                  children: [
+                                    SizedBox(
+                                      width: 20,
+                                      height: 20,
+                                      child: CircularProgressIndicator(
+                                        strokeWidth: 2,
+                                      ),
+                                    ),
+                                    SizedBox(width: 12),
+                                    Text('Loading tables...'),
+                                  ],
+                                ),
+                              )
+                            : DropdownButtonFormField<String>(
+                                value: selectedTable,
+                                decoration: InputDecoration(
+                                  labelText: 'Table *',
+                                  prefixIcon: Icon(
+                                    Icons.table_restaurant,
+                                    color: theme.colorScheme.primary,
+                                    size: 18,
+                                  ),
+                                  border: InputBorder.none,
+                                  contentPadding: const EdgeInsets.symmetric(
+                                    horizontal: 8,
+                                    vertical: 8,
+                                  ),
+                                  labelStyle: const TextStyle(fontSize: 14),
+                                ),
+                                hint: const Text(
+                                  'Select table',
+                                  style: TextStyle(fontSize: 14),
+                                ),
+                                items: tables.map((table) {
+                                  return DropdownMenuItem<String>(
+                                    value: table['TableCode'],
+                                    child: Text(
+                                      '${table['TableCode']} - ${table['TableName']}',
+                                      style: const TextStyle(fontSize: 14),
+                                    ),
+                                  );
+                                }).toList(),
+                                onChanged: (String? newValue) {
+                                  setState(() {
+                                    selectedTable = newValue;
+                                  });
+                                },
+                              ),
+                      ),
+                      const SizedBox(height: 16),
+                      // Chair Selection Dropdown
+                      Container(
+                        decoration: BoxDecoration(
+                          border: Border.all(color: Colors.grey.shade300),
+                          borderRadius: BorderRadius.circular(12),
+                        ),
+                        child: isLoadingChairs
+                            ? const Padding(
+                                padding: EdgeInsets.all(16.0),
+                                child: Row(
+                                  children: [
+                                    SizedBox(
+                                      width: 20,
+                                      height: 20,
+                                      child: CircularProgressIndicator(
+                                        strokeWidth: 2,
+                                      ),
+                                    ),
+                                    SizedBox(width: 12),
+                                    Text('Loading chairs...'),
+                                  ],
+                                ),
+                              )
+                            : DropdownButtonFormField<String>(
+                                value: selectedChair,
+                                decoration: InputDecoration(
+                                  labelText: 'Chair *',
+                                  prefixIcon: Icon(
+                                    Icons.chair_rounded,
+                                    color: theme.colorScheme.primary,
+                                    size: 18,
+                                  ),
+                                  border: InputBorder.none,
+                                  contentPadding: const EdgeInsets.symmetric(
+                                    horizontal: 8,
+                                    vertical: 8,
+                                  ),
+                                  labelStyle: const TextStyle(fontSize: 14),
+                                ),
+                                hint: const Text(
+                                  'Select chair',
+                                  style: TextStyle(fontSize: 14),
+                                ),
+                                items: chairs.map((chair) {
+                                  return DropdownMenuItem<String>(
+                                    value: chair['chairCode'],
+                                    child: Text(
+                                      chair['chairCode'],
+                                      style: const TextStyle(fontSize: 14),
+                                    ),
+                                  );
+                                }).toList(),
+                                onChanged: (String? newValue) {
+                                  setState(() {
+                                    selectedChair = newValue;
+                                  });
+                                },
+                              ),
+                      ),
+                      const SizedBox(height: 16),
+                      // Remarks/Special Requests Input
+                      TextField(
+                        controller: remarksController,
+                        decoration: InputDecoration(
+                          labelText: 'Special Requests / Remarks',
+                          hintText: 'e.g., No spice, Extra sauce',
+                          prefixIcon: Icon(
+                            Icons.note_rounded,
+                            color: theme.colorScheme.primary,
+                            size: 20,
+                          ),
+                          border: OutlineInputBorder(
+                            borderRadius: BorderRadius.circular(12),
+                          ),
+                          filled: true,
+                          fillColor: theme.colorScheme.surface,
+                          contentPadding: const EdgeInsets.symmetric(
+                            horizontal: 12,
+                            vertical: 12,
+                          ),
+                        ),
+                        maxLines: 2,
+                        maxLength: 100,
+                        keyboardType: TextInputType.multiline,
+                      ),
+                      const SizedBox(height: 16),
+                      // Order Summary
                       Container(
                         padding: const EdgeInsets.all(12),
                         decoration: BoxDecoration(
                           color: theme.colorScheme.primary.withOpacity(0.1),
                           borderRadius: BorderRadius.circular(12),
-                          border: Border.all(
-                            color: theme.colorScheme.primary.withOpacity(0.3),
-                          ),
                         ),
                         child: Row(
+                          mainAxisAlignment: MainAxisAlignment.spaceBetween,
                           children: [
-                            Container(
-                              width: 40,
-                              height: 40,
-                              decoration: BoxDecoration(
+                            Text(
+                              'Total Amount:',
+                              style: TextStyle(
+                                fontWeight: FontWeight.w600,
                                 color: theme.colorScheme.primary,
-                                borderRadius: BorderRadius.circular(8),
-                              ),
-                              child: Center(
-                                child: Text(
-                                  cart.serviceType!.icon,
-                                  style: const TextStyle(fontSize: 20),
-                                ),
                               ),
                             ),
-                            const SizedBox(width: 12),
-                            Expanded(
-                              child: Column(
-                                crossAxisAlignment: CrossAxisAlignment.start,
-                                children: [
-                                  Text(
-                                    'Service Type',
-                                    style: TextStyle(
-                                      fontSize: 12,
-                                      color: theme.colorScheme.primary
-                                          .withOpacity(0.7),
-                                      fontWeight: FontWeight.w500,
-                                    ),
-                                  ),
-                                  Text(
-                                    cart.serviceType!.displayName,
-                                    style: TextStyle(
-                                      fontSize: 16,
-                                      color: theme.colorScheme.primary,
-                                      fontWeight: FontWeight.bold,
-                                    ),
-                                  ),
-                                ],
+                            Text(
+                              'Rs.${cart.total.toStringAsFixed(0)}',
+                              style: TextStyle(
+                                fontWeight: FontWeight.bold,
+                                fontSize: 16,
+                                color: theme.colorScheme.primary,
                               ),
                             ),
                           ],
                         ),
                       ),
-                      const SizedBox(height: 16),
-                    ],
-                    // Seat Number Input
-                    TextField(
-                      controller: seatController,
-                      decoration: InputDecoration(
-                        labelText: 'Seat Number *',
-                        hintText: 'e.g., T5-S2',
-                        prefixIcon: Icon(
-                          Icons.chair_rounded,
-                          color: theme.colorScheme.primary,
-                          size: 20,
-                        ),
-                        border: OutlineInputBorder(
-                          borderRadius: BorderRadius.circular(12),
-                        ),
-                        filled: true,
-                        fillColor: theme.colorScheme.surface,
-                        contentPadding: const EdgeInsets.symmetric(
-                          horizontal: 12,
-                          vertical: 12,
-                        ),
-                      ),
-                      keyboardType: TextInputType.text,
-                      maxLength: 20,
-                    ),
-                    const SizedBox(height: 16),
-                    // Remarks/Special Requests Input
-                    TextField(
-                      controller: remarksController,
-                      decoration: InputDecoration(
-                        labelText: 'Special Requests / Remarks',
-                        hintText: 'e.g., No spice, Extra sauce',
-                        prefixIcon: Icon(
-                          Icons.note_rounded,
-                          color: theme.colorScheme.primary,
-                          size: 20,
-                        ),
-                        border: OutlineInputBorder(
-                          borderRadius: BorderRadius.circular(12),
-                        ),
-                        filled: true,
-                        fillColor: theme.colorScheme.surface,
-                        contentPadding: const EdgeInsets.symmetric(
-                          horizontal: 12,
-                          vertical: 12,
-                        ),
-                      ),
-                      maxLines: 2,
-                      maxLength: 100,
-                      keyboardType: TextInputType.multiline,
-                    ),
-                    const SizedBox(height: 16),
-                    // Order Summary
-                    Container(
-                      padding: const EdgeInsets.all(12),
-                      decoration: BoxDecoration(
-                        color: theme.colorScheme.primary.withOpacity(0.1),
-                        borderRadius: BorderRadius.circular(12),
-                      ),
-                      child: Row(
-                        mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                        children: [
-                          Text(
-                            'Total Amount:',
-                            style: TextStyle(
-                              fontWeight: FontWeight.w600,
-                              color: theme.colorScheme.primary,
-                            ),
-                          ),
-                          Text(
-                            'Rs.${cart.total.toStringAsFixed(0)}',
-                            style: TextStyle(
-                              fontWeight: FontWeight.bold,
-                              fontSize: 16,
-                              color: theme.colorScheme.primary,
-                            ),
-                          ),
-                        ],
-                      ),
-                    ),
-                  ],
-                ),
-              ),
-            ),
-          ),
-          actions: [
-            TextButton(
-              onPressed: () => Navigator.of(context).pop(),
-              child: const Text('Cancel'),
-            ),
-            ElevatedButton(
-              onPressed: () async {
-                if (cart.serviceType == null) {
-                  ScaffoldMessenger.of(context).showSnackBar(
-                    const SnackBar(
-                      content: Text('Please select a service type first'),
-                      backgroundColor: Colors.red,
-                    ),
-                  );
-                  return;
-                }
-
-                if (seatController.text.trim().isEmpty) {
-                  ScaffoldMessenger.of(context).showSnackBar(
-                    const SnackBar(
-                      content: Text('Please enter seat number'),
-                      backgroundColor: Colors.red,
-                    ),
-                  );
-                  return;
-                }
-
-                Navigator.of(context).pop();
-
-                // Capture cart items and other data before clearing
-                final cartItems = List.from(cart.items);
-                final tableNumber = seatController.text.trim();
-                final serviceType = cart.serviceType;
-                final customerName = cart.customerName;
-
-                // Clear the cart immediately
-                cart.clearCart();
-
-                // Show success dialog immediately
-                showDialog(
-                  context: context,
-                  barrierDismissible: false,
-                  builder: (context) => AlertDialog(
-                    shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(20),
-                    ),
-                    title: Row(
-                      children: [
-                        Icon(
-                          Icons.check_circle_rounded,
-                          color: Colors.green,
-                          size: 28,
-                        ),
-                        const SizedBox(width: 12),
-                        const Text('Order Confirmed!'),
-                      ],
-                    ),
-                    content: Column(
-                      mainAxisSize: MainAxisSize.min,
-                      children: [
-                        const Text(
-                          'Your order has been sent to the kitchen successfully.',
-                        ),
-                        const SizedBox(height: 12),
-                        Text(
-                          'Receipt: RCP${DateTime.now().millisecondsSinceEpoch}',
-                          style: const TextStyle(fontWeight: FontWeight.w600),
-                        ),
-                        Text(
-                          'Seat: $tableNumber',
-                          style: const TextStyle(fontWeight: FontWeight.w600),
-                        ),
-                        if (serviceType != null) ...[
-                          const SizedBox(height: 8),
-                          Text(
-                            'Service: ${serviceType.displayName}',
-                            style: const TextStyle(fontWeight: FontWeight.w600),
-                          ),
-                        ],
-                      ],
-                    ),
-                    actions: [
-                      ElevatedButton(
-                        onPressed: () => Navigator.of(context).pop(),
-                        child: const Text('OK'),
-                      ),
                     ],
                   ),
-                );
-
-                // Process order in background with captured data
-                _processOrderInBackground(
-                  context,
-                  cartItems,
-                  tableNumber,
-                  customerName,
-                );
-              },
-              style: ElevatedButton.styleFrom(
-                backgroundColor: theme.colorScheme.primary,
-                foregroundColor: theme.colorScheme.onPrimary,
-                shape: RoundedRectangleBorder(
-                  borderRadius: BorderRadius.circular(12),
                 ),
               ),
-              child: const Text('Confirm Order'),
             ),
-          ],
-        ),
+            actions: [
+              TextButton(
+                onPressed: () => Navigator.of(context).pop(),
+                child: const Text('Cancel'),
+              ),
+              ElevatedButton(
+                onPressed: () async {
+                  if (cart.serviceType == null) {
+                    ScaffoldMessenger.of(context).showSnackBar(
+                      const SnackBar(
+                        content: Text('Please select a service type first'),
+                        backgroundColor: Colors.red,
+                      ),
+                    );
+                    return;
+                  }
+
+                  if (selectedTable == null) {
+                    ScaffoldMessenger.of(context).showSnackBar(
+                      const SnackBar(
+                        content: Text('Please select a table'),
+                        backgroundColor: Colors.red,
+                      ),
+                    );
+                    return;
+                  }
+
+                  if (selectedChair == null) {
+                    ScaffoldMessenger.of(context).showSnackBar(
+                      const SnackBar(
+                        content: Text('Please select a chair'),
+                        backgroundColor: Colors.red,
+                      ),
+                    );
+                    return;
+                  }
+
+                  Navigator.of(context).pop();
+
+                  // Capture cart items and other data before clearing
+                  final cartItems = List.from(cart.items);
+                  final tableNumber = selectedTable!;
+                  final chairNumber = selectedChair ?? '';
+                  final serviceType = cart.serviceType;
+                  final customerName = cart.customerName;
+
+                  // Clear the cart immediately
+                  cart.clearCart();
+
+                  // Show success dialog immediately
+                  showDialog(
+                    context: context,
+                    barrierDismissible: false,
+                    builder: (context) => AlertDialog(
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(20),
+                      ),
+                      title: Row(
+                        children: [
+                          Icon(
+                            Icons.check_circle_rounded,
+                            color: Colors.green,
+                            size: 28,
+                          ),
+                          const SizedBox(width: 12),
+                          const Text('Order Confirmed!'),
+                        ],
+                      ),
+                      content: Column(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          const Text(
+                            'Your order has been sent to the kitchen successfully.',
+                          ),
+                          const SizedBox(height: 12),
+                          Text(
+                            'Receipt: RCP${DateTime.now().millisecondsSinceEpoch}',
+                            style: const TextStyle(fontWeight: FontWeight.w600),
+                          ),
+                          Text(
+                            'Table: $tableNumber',
+                            style: const TextStyle(fontWeight: FontWeight.w600),
+                          ),
+                          Text(
+                            'Chair: $chairNumber',
+                            style: const TextStyle(fontWeight: FontWeight.w600),
+                          ),
+                          if (serviceType != null) ...[
+                            const SizedBox(height: 8),
+                            Text(
+                              'Service: ${serviceType.displayName}',
+                              style: const TextStyle(
+                                fontWeight: FontWeight.w600,
+                              ),
+                            ),
+                          ],
+                        ],
+                      ),
+                      actions: [
+                        ElevatedButton(
+                          onPressed: () => Navigator.of(context).pop(),
+                          child: const Text('OK'),
+                        ),
+                      ],
+                    ),
+                  );
+
+                  // Process order in background with captured data
+                  _processOrderInBackground(
+                    context,
+                    cartItems,
+                    tableNumber,
+                    chairNumber,
+                    customerName,
+                  );
+                },
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: theme.colorScheme.primary,
+                  foregroundColor: theme.colorScheme.onPrimary,
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(12),
+                  ),
+                ),
+                child: const Text('Confirm Order'),
+              ),
+            ],
+          );
+        },
       ),
     );
   }
@@ -574,13 +736,15 @@ class _WaiterDashboardState extends State<WaiterDashboard> {
     BuildContext context,
     List cartItems,
     String tableNumber,
+    String chairNumber,
     String? customerName,
   ) async {
     print('🔄 Starting background order processing...');
     print('📋 Cart items count: ${cartItems.length}');
     print('🏷️ Table: $tableNumber');
+    print('🪑 Chair: $chairNumber');
     print('👤 Customer: $customerName');
-    
+
     if (cartItems.isEmpty) {
       print('❌ No cart items to process!');
       return;
@@ -589,7 +753,7 @@ class _WaiterDashboardState extends State<WaiterDashboard> {
     try {
       final databaseData = context.read<DatabaseDataProvider>();
       final authProvider = context.read<AuthProvider>();
-      
+
       print('👤 Salesman: ${authProvider.salesmanName}');
       print('🔑 Salesman Code: ${authProvider.salesmanCode}');
 
@@ -616,6 +780,7 @@ class _WaiterDashboardState extends State<WaiterDashboard> {
               ? authProvider.salesmanName
               : authProvider.salesmanCode,
           table: tableNumber,
+          chair: chairNumber,
           customer: customerName ?? 'Guest',
           kotPrint: false,
         );
