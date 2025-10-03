@@ -191,7 +191,7 @@ class ApiService {
       final response = await http.get(Uri.parse('$baseUrl/tables'));
 
       print('📊 API: Tables response status: ${response.statusCode}');
-      
+
       if (response.statusCode == 200) {
         final List<dynamic> data = json.decode(response.body);
         print('✅ API: Loaded ${data.length} tables from database');
@@ -212,7 +212,7 @@ class ApiService {
       final response = await http.get(Uri.parse('$baseUrl/chairs'));
 
       print('📊 API: Chairs response status: ${response.statusCode}');
-      
+
       if (response.statusCode == 200) {
         final List<dynamic> data = json.decode(response.body);
         print('✅ API: Loaded ${data.length} chair options');
@@ -251,7 +251,9 @@ class ApiService {
         final data = json.decode(response.body) as List;
         return data.map((json) => SuspendOrder.fromJson(json)).toList();
       } else {
-        throw Exception('Failed to load suspend orders: ${response.statusCode}');
+        throw Exception(
+          'Failed to load suspend orders: ${response.statusCode}',
+        );
       }
     } catch (e) {
       print('Error fetching suspend orders: $e');
@@ -259,7 +261,9 @@ class ApiService {
     }
   }
 
-  static Future<List<SuspendOrder>> getSuspendOrdersByTable(String tableNumber) async {
+  static Future<List<SuspendOrder>> getSuspendOrdersByTable(
+    String tableNumber,
+  ) async {
     try {
       final response = await http.get(
         Uri.parse('$baseUrl/suspend-orders/table/$tableNumber'),
@@ -268,7 +272,9 @@ class ApiService {
         final data = json.decode(response.body) as List;
         return data.map((json) => SuspendOrder.fromJson(json)).toList();
       } else {
-        throw Exception('Failed to load suspend orders: ${response.statusCode}');
+        throw Exception(
+          'Failed to load suspend orders: ${response.statusCode}',
+        );
       }
     } catch (e) {
       print('Error fetching suspend orders by table: $e');
@@ -276,16 +282,18 @@ class ApiService {
     }
   }
 
-  static Future<Map<String, dynamic>> createSuspendOrder(SuspendOrder order) async {
+  static Future<Map<String, dynamic>> createSuspendOrder(
+    SuspendOrder order,
+  ) async {
     try {
       print('🔄 API: Creating suspend order for ${order.productDescription}');
       print('📋 API: Table: ${order.table}, Amount: ${order.amount}');
-      
+
       final orderJson = order.toJson();
       print('📦 API: Order JSON: $orderJson');
       final requestBody = json.encode(orderJson);
       print('📦 API: Request body: $requestBody');
-      
+
       final response = await http.post(
         Uri.parse('$baseUrl/suspend-orders'),
         headers: {'Content-Type': 'application/json'},
@@ -301,7 +309,9 @@ class ApiService {
         return result;
       } else {
         print('❌ API: Failed to create suspend order: ${response.statusCode}');
-        throw Exception('Failed to create suspend order: ${response.statusCode}');
+        throw Exception(
+          'Failed to create suspend order: ${response.statusCode}',
+        );
       }
     } catch (e) {
       print('❌ API: Error creating suspend order: $e');
@@ -309,7 +319,10 @@ class ApiService {
     }
   }
 
-  static Future<Map<String, dynamic>> updateSuspendOrder(int id, SuspendOrder order) async {
+  static Future<Map<String, dynamic>> updateSuspendOrder(
+    int id,
+    SuspendOrder order,
+  ) async {
     try {
       final response = await http.put(
         Uri.parse('$baseUrl/suspend-orders/$id'),
@@ -320,7 +333,9 @@ class ApiService {
       if (response.statusCode == 200) {
         return json.decode(response.body);
       } else {
-        throw Exception('Failed to update suspend order: ${response.statusCode}');
+        throw Exception(
+          'Failed to update suspend order: ${response.statusCode}',
+        );
       }
     } catch (e) {
       print('Error updating suspend order: $e');
@@ -337,7 +352,9 @@ class ApiService {
       if (response.statusCode == 200) {
         return json.decode(response.body);
       } else {
-        throw Exception('Failed to delete suspend order: ${response.statusCode}');
+        throw Exception(
+          'Failed to delete suspend order: ${response.statusCode}',
+        );
       }
     } catch (e) {
       print('Error deleting suspend order: $e');
@@ -345,21 +362,19 @@ class ApiService {
     }
   }
 
-  static Future<Map<String, dynamic>> confirmOrder(String tableNumber, {
+  static Future<Map<String, dynamic>> confirmOrder(
+    String tableNumber, {
     String? receiptNo,
     String? salesMan,
   }) async {
     try {
       print('🔄 API: Confirming order for table: $tableNumber');
       print('📋 API: Receipt: $receiptNo, Salesman: $salesMan');
-      
+
       final response = await http.post(
         Uri.parse('$baseUrl/orders/confirm/$tableNumber'),
         headers: {'Content-Type': 'application/json'},
-        body: json.encode({
-          'receiptNo': receiptNo,
-          'salesMan': salesMan,
-        }),
+        body: json.encode({'receiptNo': receiptNo, 'salesMan': salesMan}),
       );
 
       print('📊 API: Confirm order response status: ${response.statusCode}');
@@ -383,7 +398,9 @@ class ApiService {
     }
   }
 
-  static Future<Map<String, dynamic>> clearSuspendOrders(String tableNumber) async {
+  static Future<Map<String, dynamic>> clearSuspendOrders(
+    String tableNumber,
+  ) async {
     try {
       final response = await http.delete(
         Uri.parse('$baseUrl/suspend-orders/table/$tableNumber'),
@@ -392,7 +409,9 @@ class ApiService {
       if (response.statusCode == 200) {
         return json.decode(response.body);
       } else {
-        throw Exception('Failed to clear suspend orders: ${response.statusCode}');
+        throw Exception(
+          'Failed to clear suspend orders: ${response.statusCode}',
+        );
       }
     } catch (e) {
       print('Error clearing suspend orders: $e');
