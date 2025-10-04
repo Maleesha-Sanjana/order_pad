@@ -19,12 +19,12 @@ async function initializeDatabase() {
   let delay = 2000; // Start with 2 seconds delay
   
   while (retries > 0) {
-  try {
+    try {
       console.log(`🔌 Attempting to connect to database (${6-retries}/5)...`);
-    pool = await sql.connect(config);
-    console.log('✅ Connected to SQL Server database');
+      pool = await sql.connect(config);
+      console.log('✅ Connected to SQL Server database');
       return; // Success, exit the function
-  } catch (err) {
+    } catch (err) {
       retries--;
       console.error(`❌ Database connection failed (${6-retries}/5):`, err.message);
       
@@ -34,8 +34,7 @@ async function initializeDatabase() {
         delay *= 1.5; // Exponential backoff
       } else {
         console.error('❌ Failed to connect to database after 5 attempts');
-        console.log('⚠️  Server will continue running without database connection');
-        console.log('⚠️  API endpoints will return mock data for testing');
+        console.log('⚠️  Server will continue running but API endpoints will fail without database connection');
         pool = null; // Set pool to null to indicate no database connection
       }
     }
@@ -50,6 +49,76 @@ initializeDatabase();
 // Health check
 app.get('/api/health', (req, res) => {
   res.json({ status: 'OK', message: 'POS Solution API is running' });
+});
+
+// Check and ensure inv_suspend table structure
+app.get('/api/suspend-orders/check-structure', async (req, res) => {
+  try {
+    if (!pool) {
+      return res.status(503).json({ error: 'Database not connected' });
+    }
+    
+    // Check if id column exists and is identity
+    const result = await pool.request().query(`
+      SELECT 
+        COLUMN_NAME,
+        DATA_TYPE,
+        IS_IDENTITY,
+        IDENTITY_SEED,
+        IDENTITY_INCREMENT
+      FROM INFORMATION_SCHEMA.COLUMNS 
+      WHERE TABLE_NAME = 'inv_suspend' 
+      AND COLUMN_NAME = 'id'
+    `);
+    
+    if (result.recordset.length === 0) {
+      return res.json({ 
+        success: false, 
+        message: 'id column not found in inv_suspend table',
+        suggestion: 'Add id column as IDENTITY(1,1) PRIMARY KEY'
+      });
+    }
+    
+    const idColumn = result.recordset[0];
+    res.json({
+      success: true,
+      message: 'Table structure check completed',
+      idColumn: {
+        name: idColumn.COLUMN_NAME,
+        dataType: idColumn.DATA_TYPE,
+        isIdentity: idColumn.IS_IDENTITY,
+        seed: idColumn.IDENTITY_SEED,
+        increment: idColumn.IDENTITY_INCREMENT
+      }
+    });
+  } catch (err) {
+    console.error('Error checking table structure:', err);
+    res.status(500).json({ error: 'Failed to check table structure' });
+  }
+});
+
+// Get next available ID for inv_suspend
+app.get('/api/suspend-orders/next-id', async (req, res) => {
+  try {
+    if (!pool) {
+      return res.status(503).json({ error: 'Database not connected' });
+    }
+    
+    const result = await pool.request().query(`
+      SELECT ISNULL(MAX(id), 0) + 1 as nextId 
+      FROM inv_suspend
+    `);
+    
+    const nextId = result.recordset[0].nextId;
+    res.json({ 
+      success: true, 
+      nextId: nextId,
+      message: `Next available ID: ${nextId}`
+    });
+  } catch (err) {
+    console.error('Error getting next ID:', err);
+    res.status(500).json({ error: 'Failed to get next ID' });
+  }
 });
 
 // Get all departments
@@ -154,18 +223,15 @@ app.post('/api/auth/login', async (req, res) => {
   try {
     const { salesmanCode, password } = req.body;
     
-    // Try to connect to database if not already connected
+    // Ensure database connection
     if (!pool) {
       try {
-        console.log('🔌 Attempting to reconnect to database...');
+        console.log('🔌 Attempting to connect to database...');
         pool = await sql.connect(config);
-        console.log('✅ Database reconnected successfully');
+        console.log('✅ Database connected successfully');
       } catch (err) {
-        console.error('❌ Database reconnection failed:', err.message);
-        
-        // Fallback to mock authentication for testing
-        console.log('🔄 Using fallback authentication for testing...');
-        return handleMockAuthentication(salesmanCode, password, res);
+        console.error('❌ Database connection failed:', err.message);
+        return res.status(503).json({ success: false, message: 'Database connection failed' });
       }
     }
     
@@ -191,9 +257,7 @@ app.post('/api/auth/login', async (req, res) => {
     }
   } catch (err) {
     console.error('Error authenticating salesman:', err);
-    // Fallback to mock authentication on error
-    console.log('🔄 Using fallback authentication due to error...');
-    return handleMockAuthentication(req.body.salesmanCode, req.body.password, res);
+    res.status(500).json({ success: false, message: 'Authentication failed' });
   }
 });
 
@@ -206,18 +270,15 @@ app.post('/api/auth/login-password', async (req, res) => {
       return res.status(400).json({ success: false, message: 'Password is required' });
     }
     
-    // Try to connect to database if not already connected
+    // Ensure database connection
     if (!pool) {
       try {
-        console.log('🔌 Attempting to reconnect to database...');
+        console.log('🔌 Attempting to connect to database...');
         pool = await sql.connect(config);
-        console.log('✅ Database reconnected successfully');
+        console.log('✅ Database connected successfully');
       } catch (err) {
-        console.error('❌ Database reconnection failed:', err.message);
-        
-        // Fallback to mock authentication for testing
-        console.log('🔄 Using fallback authentication for testing...');
-        return handleMockPasswordAuthentication(password, res);
+        console.error('❌ Database connection failed:', err.message);
+        return res.status(503).json({ success: false, message: 'Database connection failed' });
       }
     }
     
@@ -244,71 +305,10 @@ app.post('/api/auth/login-password', async (req, res) => {
     }
   } catch (err) {
     console.error('Error authenticating with password:', err);
-    // Fallback to mock authentication on error
-    console.log('🔄 Using fallback authentication due to error...');
-    return handleMockPasswordAuthentication(req.body.password, res);
+    res.status(500).json({ success: false, message: 'Authentication failed' });
   }
 });
 
-// Mock authentication fallback function
-function handleMockAuthentication(salesmanCode, password, res) {
-  console.log(`🔐 Mock authentication attempt for salesman: ${salesmanCode}`);
-  
-  // Mock valid credentials for testing - you can add your real credentials here
-  const mockSalesmen = {
-    'S001': { password: 'tenhg', name: 'tenhg', role: 'Waiter' },
-    'S002': { password: 'password123', name: 'Jane Smith', role: 'Manager' },
-    '585249': { password: 'password123', name: 'Test User', role: 'Waiter' }
-  };
-  
-  const salesman = mockSalesmen[salesmanCode];
-  if (salesman && salesman.password === password) {
-    console.log(`✅ Mock authentication successful for: ${salesman.name}`);
-    res.json({ 
-      success: true, 
-      salesman: {
-        SalesmanCode: salesmanCode,
-        SalesmanName: salesman.name,
-        SalesmanType: salesman.role,
-        Email: `${salesmanCode.toLowerCase()}@example.com`
-      }
-    });
-  } else {
-    console.log(`❌ Mock authentication failed for: ${salesmanCode}`);
-    res.status(401).json({ success: false, message: 'Invalid credentials' });
-  }
-}
-
-// Mock password authentication fallback function
-function handleMockPasswordAuthentication(password, res) {
-  console.log(`🔐 Mock password authentication attempt for password: ${password}`);
-  
-  // Mock valid passwords for testing - you can add your real passwords here
-  const mockPasswords = {
-    'test123': { salesmanCode: 'S001', name: 'tenhg', role: 'Waiter', location: 'Main Branch', companyCode: 'COMP001' },
-    'maleesha123': { salesmanCode: 'S002', name: 'Maleesha', role: 'Manager', location: 'Head Office', companyCode: 'COMP001' },
-    'password123': { salesmanCode: 'S003', name: 'Test User', role: 'Waiter', location: 'Downtown Branch', companyCode: 'COMP001' }
-  };
-  
-  const salesman = mockPasswords[password];
-  if (salesman) {
-    console.log(`✅ Mock password authentication successful for: ${salesman.name}`);
-    res.json({
-      success: true,
-      salesman: {
-        SalesmanCode: salesman.salesmanCode,
-        SalesmanName: salesman.name,
-        SalesmanType: salesman.role,
-        Email: `${salesman.salesmanCode.toLowerCase()}@example.com`,
-        LocationDescription: salesman.location,
-        CompanyCode: salesman.companyCode
-      }
-    });
-  } else {
-    console.log(`❌ Mock password authentication failed for password: ${password}`);
-    res.status(401).json({ success: false, message: 'Invalid password' });
-  }
-}
 
 // Get all tables
 app.get('/api/tables', async (req, res) => {
