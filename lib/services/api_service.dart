@@ -227,6 +227,27 @@ class ApiService {
     }
   }
 
+  static Future<List<Map<String, dynamic>>> getRooms() async {
+    try {
+      print('🔄 API: Fetching rooms from inv_rooms...');
+      final response = await http.get(Uri.parse('$baseUrl/rooms'));
+
+      print('📊 API: Rooms response status: ${response.statusCode}');
+
+      if (response.statusCode == 200) {
+        final List<dynamic> data = json.decode(response.body);
+        print('✅ API: Loaded ${data.length} rooms from database');
+        return data.cast<Map<String, dynamic>>();
+      } else {
+        print('❌ API: Failed to fetch rooms: ${response.statusCode}');
+        throw Exception('Failed to fetch rooms: ${response.statusCode}');
+      }
+    } catch (e) {
+      print('❌ API: Error fetching rooms: $e');
+      rethrow;
+    }
+  }
+
   static Future<List<Salesman>> getSalesmen() async {
     try {
       final response = await http.get(Uri.parse('$baseUrl/salesmen'));
