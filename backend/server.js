@@ -331,23 +331,67 @@ app.get('/api/tables', async (req, res) => {
   }
 });
 
-// Get chairs (5 chairs per table with ch1, ch2... naming)
+// Get chairs from inv_chair table
 app.get('/api/chairs', async (req, res) => {
   try {
-    // All tables have only 5 chairs with ch1, ch2, ch3, ch4, ch5 naming
-    const chairs = [
-      { chairCode: 'ch1', chairName: 'ch1' },
-      { chairCode: 'ch2', chairName: 'ch2' },
-      { chairCode: 'ch3', chairName: 'ch3' },
-      { chairCode: 'ch4', chairName: 'ch4' },
-      { chairCode: 'ch5', chairName: 'ch5' }
-    ];
+    if (!pool) {
+      return res.status(503).json({ error: 'Database not connected' });
+    }
     
-    console.log(`✅ Loaded ${chairs.length} chair options (ch1-ch5)`);
+    console.log('🔄 Fetching chairs from inv_chair table...');
+    const result = await pool.request().query(`
+      SELECT 
+        TableCode,
+        ChairCode,
+        ChairName
+      FROM inv_chair
+      ORDER BY TableCode, ChairCode
+    `);
+    
+    const chairs = result.recordset.map(row => ({
+      tableCode: row.TableCode,
+      chairCode: row.ChairCode,
+      chairName: row.ChairName
+    }));
+    
+    console.log(`✅ Loaded ${chairs.length} chairs from inv_chair table`);
     res.json(chairs);
   } catch (err) {
     console.error('Error fetching chairs:', err);
     res.status(500).json({ error: 'Failed to fetch chairs' });
+  }
+});
+
+// Get rooms from inv_rooms table
+app.get('/api/rooms', async (req, res) => {
+  try {
+    if (!pool) {
+      return res.status(503).json({ error: 'Database not connected' });
+    }
+    
+    console.log('🔄 Fetching rooms from inv_rooms table...');
+    const result = await pool.request().query(`
+      SELECT 
+        idx,
+        RoomCode,
+        RoomName,
+        Location
+      FROM inv_rooms
+      ORDER BY RoomCode
+    `);
+    
+    const rooms = result.recordset.map(row => ({
+      idx: row.idx,
+      RoomCode: row.RoomCode,
+      RoomName: row.RoomName,
+      Location: row.Location
+    }));
+    
+    console.log(`✅ Loaded ${rooms.length} rooms from inv_rooms table`);
+    res.json(rooms);
+  } catch (err) {
+    console.error('Error fetching rooms:', err);
+    res.status(500).json({ error: 'Failed to fetch rooms' });
   }
 });
 

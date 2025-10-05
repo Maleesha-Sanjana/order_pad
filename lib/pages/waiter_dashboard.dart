@@ -285,55 +285,82 @@ class _WaiterDashboardState extends State<WaiterDashboard> {
     final remarksController = TextEditingController();
     List<Map<String, dynamic>> tables = [];
     List<Map<String, dynamic>> chairs = [];
+    List<Map<String, dynamic>> rooms = [];
     String? selectedTable;
     String? selectedChair;
+    String? selectedRoom;
     bool isLoadingTables = true;
     bool isLoadingChairs = false;
+    bool isLoadingRooms = true;
 
     showDialog(
       context: context,
       barrierDismissible: false,
       builder: (context) => StatefulBuilder(
         builder: (context, setState) {
-          // Load tables and chairs on first build
-          if (isLoadingTables && tables.isEmpty) {
-            // Load tables from inv_tables
-            ApiService.getTables()
-                .then((loadedTables) {
-                  if (context.mounted) {
-                    setState(() {
-                      tables = loadedTables;
-                      isLoadingTables = false;
-                    });
-                  }
-                })
-                .catchError((error) {
-                  if (context.mounted) {
-                    setState(() {
-                      isLoadingTables = false;
-                    });
-                    print('Error loading tables: $error');
-                  }
-                });
+          // Load data based on service type
+          if (cart.serviceType?.name == 'roomService') {
+            // Load rooms for room service
+            if (isLoadingRooms && rooms.isEmpty) {
+              ApiService.getRooms()
+                  .then((loadedRooms) {
+                    if (context.mounted) {
+                      setState(() {
+                        rooms = loadedRooms;
+                        isLoadingRooms = false;
+                      });
+                    }
+                  })
+                  .catchError((error) {
+                    if (context.mounted) {
+                      setState(() {
+                        isLoadingRooms = false;
+                      });
+                      print('Error loading rooms: $error');
+                    }
+                  });
+            }
+          } else {
+            // Load tables and chairs for dine-in/takeaway
+            if (isLoadingTables && tables.isEmpty) {
+              // Load tables from inv_tables
+              ApiService.getTables()
+                  .then((loadedTables) {
+                    if (context.mounted) {
+                      setState(() {
+                        tables = loadedTables;
+                        isLoadingTables = false;
+                      });
+                    }
+                  })
+                  .catchError((error) {
+                    if (context.mounted) {
+                      setState(() {
+                        isLoadingTables = false;
+                      });
+                      print('Error loading tables: $error');
+                    }
+                  });
 
-            // Load chairs independently
-            ApiService.getChairs()
-                .then((loadedChairs) {
-                  if (context.mounted) {
-                    setState(() {
-                      chairs = loadedChairs;
-                      isLoadingChairs = false;
-                    });
-                  }
-                })
-                .catchError((error) {
-                  if (context.mounted) {
-                    setState(() {
-                      isLoadingChairs = false;
-                    });
-                    print('Error loading chairs: $error');
-                  }
-                });
+              // Load chairs independently
+              ApiService.getChairs()
+                  .then((loadedChairs) {
+                    if (context.mounted) {
+                      setState(() {
+                        chairs = loadedChairs;
+                        isLoadingChairs = false;
+                      });
+                    }
+                  })
+                  .catchError((error) {
+                    if (context.mounted) {
+                      setState(() {
+                        isLoadingChairs = false;
+                      });
+                      print('Error loading chairs: $error');
+                    }
+                  });
+            }
           }
 
           return AlertDialog(
@@ -421,125 +448,198 @@ class _WaiterDashboardState extends State<WaiterDashboard> {
                         ),
                         const SizedBox(height: 16),
                       ],
-                      // Table Selection Dropdown
-                      Container(
-                        decoration: BoxDecoration(
-                          border: Border.all(color: Colors.grey.shade300),
-                          borderRadius: BorderRadius.circular(12),
-                        ),
-                        child: isLoadingTables
-                            ? const Padding(
-                                padding: EdgeInsets.all(16.0),
-                                child: Row(
-                                  children: [
-                                    SizedBox(
-                                      width: 20,
-                                      height: 20,
-                                      child: CircularProgressIndicator(
-                                        strokeWidth: 2,
+                      // Conditional Selection based on Service Type
+                      if (cart.serviceType?.name == 'roomService') ...[
+                        // Room Selection Dropdown for Room Service
+                        Container(
+                          decoration: BoxDecoration(
+                            border: Border.all(color: Colors.grey.shade300),
+                            borderRadius: BorderRadius.circular(12),
+                          ),
+                          child: isLoadingRooms
+                              ? const Padding(
+                                  padding: EdgeInsets.all(16.0),
+                                  child: Row(
+                                    children: [
+                                      SizedBox(
+                                        width: 20,
+                                        height: 20,
+                                        child: CircularProgressIndicator(
+                                          strokeWidth: 2,
+                                        ),
                                       ),
-                                    ),
-                                    SizedBox(width: 12),
-                                    Text('Loading tables...'),
-                                  ],
-                                ),
-                              )
-                            : DropdownButtonFormField<String>(
-                                value: selectedTable,
-                                decoration: InputDecoration(
-                                  labelText: 'Table *',
-                                  prefixIcon: Icon(
-                                    Icons.table_restaurant,
-                                    color: theme.colorScheme.primary,
-                                    size: 18,
+                                      SizedBox(width: 12),
+                                      Text('Loading rooms...'),
+                                    ],
                                   ),
-                                  border: InputBorder.none,
-                                  contentPadding: const EdgeInsets.symmetric(
-                                    horizontal: 8,
-                                    vertical: 8,
-                                  ),
-                                  labelStyle: const TextStyle(fontSize: 14),
-                                ),
-                                hint: const Text(
-                                  'Select table',
-                                  style: TextStyle(fontSize: 14),
-                                ),
-                                items: tables.map((table) {
-                                  return DropdownMenuItem<String>(
-                                    value: table['TableCode'],
-                                    child: Text(
-                                      '${table['TableCode']} - ${table['TableName']}',
-                                      style: const TextStyle(fontSize: 14),
+                                )
+                              : DropdownButtonFormField<String>(
+                                  value: selectedRoom,
+                                  decoration: InputDecoration(
+                                    labelText: 'Room *',
+                                    prefixIcon: Icon(
+                                      Icons.bed,
+                                      color: theme.colorScheme.primary,
+                                      size: 18,
                                     ),
-                                  );
-                                }).toList(),
-                                onChanged: (String? newValue) {
-                                  setState(() {
-                                    selectedTable = newValue;
-                                  });
-                                },
-                              ),
-                      ),
-                      const SizedBox(height: 16),
-                      // Chair Selection Dropdown
-                      Container(
-                        decoration: BoxDecoration(
-                          border: Border.all(color: Colors.grey.shade300),
-                          borderRadius: BorderRadius.circular(12),
-                        ),
-                        child: isLoadingChairs
-                            ? const Padding(
-                                padding: EdgeInsets.all(16.0),
-                                child: Row(
-                                  children: [
-                                    SizedBox(
-                                      width: 20,
-                                      height: 20,
-                                      child: CircularProgressIndicator(
-                                        strokeWidth: 2,
+                                    border: InputBorder.none,
+                                    contentPadding: const EdgeInsets.symmetric(
+                                      horizontal: 8,
+                                      vertical: 8,
+                                    ),
+                                    labelStyle: const TextStyle(fontSize: 14),
+                                  ),
+                                  hint: const Text(
+                                    'Select room',
+                                    style: TextStyle(fontSize: 14),
+                                  ),
+                                  items: rooms.map((room) {
+                                    return DropdownMenuItem<String>(
+                                      value: room['RoomCode'],
+                                      child: Text(
+                                        '${room['RoomCode']} - ${room['RoomName']}',
+                                        style: const TextStyle(fontSize: 14),
                                       ),
-                                    ),
-                                    SizedBox(width: 12),
-                                    Text('Loading chairs...'),
-                                  ],
+                                    );
+                                  }).toList(),
+                                  onChanged: (String? newValue) {
+                                    setState(() {
+                                      selectedRoom = newValue;
+                                    });
+                                  },
                                 ),
-                              )
-                            : DropdownButtonFormField<String>(
-                                value: selectedChair,
-                                decoration: InputDecoration(
-                                  labelText: 'Chair *',
-                                  prefixIcon: Icon(
-                                    Icons.chair_rounded,
-                                    color: theme.colorScheme.primary,
-                                    size: 18,
+                        ),
+                      ] else ...[
+                        // Table Selection for Dine-in/Takeaway
+                        Container(
+                          decoration: BoxDecoration(
+                            border: Border.all(color: Colors.grey.shade300),
+                            borderRadius: BorderRadius.circular(12),
+                          ),
+                          child: isLoadingTables
+                              ? const Padding(
+                                  padding: EdgeInsets.all(16.0),
+                                  child: Row(
+                                    children: [
+                                      SizedBox(
+                                        width: 20,
+                                        height: 20,
+                                        child: CircularProgressIndicator(
+                                          strokeWidth: 2,
+                                        ),
+                                      ),
+                                      SizedBox(width: 12),
+                                      Text('Loading tables...'),
+                                    ],
                                   ),
-                                  border: InputBorder.none,
-                                  contentPadding: const EdgeInsets.symmetric(
-                                    horizontal: 8,
-                                    vertical: 8,
-                                  ),
-                                  labelStyle: const TextStyle(fontSize: 14),
-                                ),
-                                hint: const Text(
-                                  'Select chair',
-                                  style: TextStyle(fontSize: 14),
-                                ),
-                                items: chairs.map((chair) {
-                                  return DropdownMenuItem<String>(
-                                    value: chair['chairCode'],
-                                    child: Text(
-                                      chair['chairCode'],
-                                      style: const TextStyle(fontSize: 14),
+                                )
+                              : DropdownButtonFormField<String>(
+                                  value: selectedTable,
+                                  decoration: InputDecoration(
+                                    labelText: 'Table *',
+                                    prefixIcon: Icon(
+                                      Icons.table_restaurant,
+                                      color: theme.colorScheme.primary,
+                                      size: 18,
                                     ),
-                                  );
-                                }).toList(),
-                                onChanged: (String? newValue) {
-                                  setState(() {
-                                    selectedChair = newValue;
-                                  });
-                                },
-                              ),
-                      ),
+                                    border: InputBorder.none,
+                                    contentPadding: const EdgeInsets.symmetric(
+                                      horizontal: 8,
+                                      vertical: 8,
+                                    ),
+                                    labelStyle: const TextStyle(fontSize: 14),
+                                  ),
+                                  hint: const Text(
+                                    'Select table',
+                                    style: TextStyle(fontSize: 14),
+                                  ),
+                                  items: tables.map((table) {
+                                    return DropdownMenuItem<String>(
+                                      value: table['TableCode'],
+                                      child: Text(
+                                        '${table['TableCode']} - ${table['TableName']}',
+                                        style: const TextStyle(fontSize: 14),
+                                      ),
+                                    );
+                                  }).toList(),
+                                  onChanged: (String? newValue) {
+                                    setState(() {
+                                      selectedTable = newValue;
+                                      selectedChair =
+                                          null; // Reset chair selection when table changes
+                                    });
+                                  },
+                                ),
+                        ),
+                        const SizedBox(height: 16),
+                        // Chair Selection for Dine-in/Takeaway
+                        Container(
+                          decoration: BoxDecoration(
+                            border: Border.all(color: Colors.grey.shade300),
+                            borderRadius: BorderRadius.circular(12),
+                          ),
+                          child: isLoadingChairs
+                              ? const Padding(
+                                  padding: EdgeInsets.all(16.0),
+                                  child: Row(
+                                    children: [
+                                      SizedBox(
+                                        width: 20,
+                                        height: 20,
+                                        child: CircularProgressIndicator(
+                                          strokeWidth: 2,
+                                        ),
+                                      ),
+                                      SizedBox(width: 12),
+                                      Text('Loading chairs...'),
+                                    ],
+                                  ),
+                                )
+                              : DropdownButtonFormField<String>(
+                                  value: selectedChair,
+                                  decoration: InputDecoration(
+                                    labelText: 'Chair *',
+                                    prefixIcon: Icon(
+                                      Icons.chair_rounded,
+                                      color: theme.colorScheme.primary,
+                                      size: 18,
+                                    ),
+                                    border: InputBorder.none,
+                                    contentPadding: const EdgeInsets.symmetric(
+                                      horizontal: 8,
+                                      vertical: 8,
+                                    ),
+                                    labelStyle: const TextStyle(fontSize: 14),
+                                  ),
+                                  hint: const Text(
+                                    'Select chair',
+                                    style: TextStyle(fontSize: 14),
+                                  ),
+                                  items: chairs
+                                      .where(
+                                        (chair) =>
+                                            chair['tableCode'] == selectedTable,
+                                      )
+                                      .map((chair) {
+                                        return DropdownMenuItem<String>(
+                                          value: chair['chairCode'],
+                                          child: Text(
+                                            '${chair['chairCode']} - ${chair['chairName']}',
+                                            style: const TextStyle(
+                                              fontSize: 14,
+                                            ),
+                                          ),
+                                        );
+                                      })
+                                      .toList(),
+                                  onChanged: (String? newValue) {
+                                    setState(() {
+                                      selectedChair = newValue;
+                                    });
+                                  },
+                                ),
+                        ),
+                      ],
                       const SizedBox(height: 16),
                       // Remarks/Special Requests Input
                       TextField(
@@ -609,40 +709,72 @@ class _WaiterDashboardState extends State<WaiterDashboard> {
                 onPressed: () async {
                   if (cart.serviceType == null) {
                     ScaffoldMessenger.of(context).showSnackBar(
-                      const SnackBar(
-                        content: Text('Please select a service type first'),
+                      SnackBar(
+                        content: Row(
+                          children: [
+                            Icon(Icons.warning_rounded, color: Colors.white),
+                            const SizedBox(width: 8),
+                            const Text('Service type selection is required!'),
+                          ],
+                        ),
                         backgroundColor: Colors.red,
+                        duration: const Duration(seconds: 3),
+                        behavior: SnackBarBehavior.floating,
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(8),
+                        ),
                       ),
                     );
                     return;
                   }
 
-                  if (selectedTable == null) {
-                    ScaffoldMessenger.of(context).showSnackBar(
-                      const SnackBar(
-                        content: Text('Please select a table'),
-                        backgroundColor: Colors.red,
-                      ),
-                    );
-                    return;
-                  }
+                  if (cart.serviceType?.name == 'roomService') {
+                    // Validate room selection for room service
+                    if (selectedRoom == null) {
+                      ScaffoldMessenger.of(context).showSnackBar(
+                        const SnackBar(
+                          content: Text('Please select a room'),
+                          backgroundColor: Colors.red,
+                        ),
+                      );
+                      return;
+                    }
+                  } else {
+                    // Validate table and chair selection for dine-in/takeaway
+                    if (selectedTable == null) {
+                      ScaffoldMessenger.of(context).showSnackBar(
+                        const SnackBar(
+                          content: Text('Please select a table'),
+                          backgroundColor: Colors.red,
+                        ),
+                      );
+                      return;
+                    }
 
-                  if (selectedChair == null) {
-                    ScaffoldMessenger.of(context).showSnackBar(
-                      const SnackBar(
-                        content: Text('Please select a chair'),
-                        backgroundColor: Colors.red,
-                      ),
-                    );
-                    return;
+                    if (selectedChair == null) {
+                      ScaffoldMessenger.of(context).showSnackBar(
+                        const SnackBar(
+                          content: Text('Please select a chair'),
+                          backgroundColor: Colors.red,
+                        ),
+                      );
+                      return;
+                    }
                   }
 
                   Navigator.of(context).pop();
 
                   // Capture cart items and other data before clearing
                   final cartItems = List.from(cart.items);
-                  final tableNumber = selectedTable!;
-                  final chairNumber = selectedChair ?? '';
+                  final tableNumber = cart.serviceType?.name == 'roomService'
+                      ? null
+                      : selectedTable!;
+                  final chairNumber = cart.serviceType?.name == 'roomService'
+                      ? null
+                      : selectedChair ?? '';
+                  final roomNumber = cart.serviceType?.name == 'roomService'
+                      ? selectedRoom!
+                      : null;
                   final serviceType = cart.serviceType;
                   final customerName = cart.customerName;
 
@@ -711,9 +843,10 @@ class _WaiterDashboardState extends State<WaiterDashboard> {
                   _processOrderInBackground(
                     context,
                     cartItems,
-                    tableNumber,
-                    chairNumber,
+                    tableNumber ?? '',
+                    chairNumber ?? '',
                     customerName,
+                    roomNumber,
                   );
                 },
                 style: ElevatedButton.styleFrom(
@@ -738,11 +871,13 @@ class _WaiterDashboardState extends State<WaiterDashboard> {
     String tableNumber,
     String chairNumber,
     String? customerName,
+    String? roomNumber,
   ) async {
     print('🔄 Starting background order processing...');
     print('📋 Cart items count: ${cartItems.length}');
     print('🏷️ Table: $tableNumber');
     print('🪑 Chair: $chairNumber');
+    print('🏨 Room: $roomNumber');
     print('👤 Customer: $customerName');
 
     if (cartItems.isEmpty) {
@@ -779,8 +914,12 @@ class _WaiterDashboardState extends State<WaiterDashboard> {
           salesMan: authProvider.salesmanName.isNotEmpty
               ? authProvider.salesmanName
               : authProvider.salesmanCode,
-          table: tableNumber,
-          chair: chairNumber,
+          table:
+              roomNumber ??
+              tableNumber, // Use room number for room service, table number for dine-in/takeaway
+          chair: roomNumber != null
+              ? ''
+              : chairNumber, // No chair for room service
           customer: customerName ?? 'Guest',
           kotPrint: false,
         );
@@ -792,7 +931,8 @@ class _WaiterDashboardState extends State<WaiterDashboard> {
         print('   - Qty: ${suspendOrder.qty}');
         print('   - Amount: ${suspendOrder.amount}');
         print('   - SalesMan: ${suspendOrder.salesMan}');
-        print('   - Table: ${suspendOrder.table}');
+        print('   - Table/Room: ${suspendOrder.table}');
+        print('   - Chair: ${suspendOrder.chair}');
 
         try {
           print('🔄 Calling databaseData.addToCart...');
