@@ -1,7 +1,6 @@
 import 'dart:async';
 import 'package:flutter/material.dart';
 import '../services/api_service.dart';
-import '../services/realtime_sync_service.dart';
 import '../models/food_item.dart';
 import '../models/department.dart';
 import '../models/sub_department.dart';
@@ -28,13 +27,6 @@ class DatabaseDataProvider extends ChangeNotifier {
   // Error states
   String? _errorMessage;
 
-  // Real-time sync
-  final RealtimeSyncService _realtimeSync = RealtimeSyncService();
-  bool _isRealtimeEnabled = true;
-  StreamSubscription? _connectionStatusSubscription;
-  StreamSubscription? _dataChangesSubscription;
-  Timer? _autoRefreshTimer;
-
   // Getters
   List<FoodItem> get menuItems => _menuItems;
   List<Department> get departments => _departments;
@@ -53,159 +45,6 @@ class DatabaseDataProvider extends ChangeNotifier {
 
   bool get hasError => _errorMessage != null;
 
-  // Real-time sync getters
-  bool get isRealtimeEnabled => _isRealtimeEnabled;
-  bool get isConnected => _realtimeSync.isConnected;
-  bool get isPolling => _realtimeSync.isPolling;
-  bool get isWebSocketConnected => _realtimeSync.isWebSocketConnected;
-
-  /// Initialize the provider with real-time sync
-  Future<void> initialize() async {
-    print('🔄 Initializing DatabaseDataProvider with real-time sync...');
-    
-    try {
-      // Initialize real-time sync service
-      await _realtimeSync.initialize();
-      
-      // Register update callbacks
-      _registerRealtimeCallbacks();
-      
-      // Listen to connection status changes
-      _connectionStatusSubscription = _realtimeSync.connectionStatus.listen((isConnected) {
-        print('🔗 Connection status changed: $isConnected');
-        notifyListeners();
-      });
-      
-      // Listen to data changes
-      _dataChangesSubscription = _realtimeSync.dataChanges.listen((change) {
-        print('📊 Data change received: ${change['type']}');
-        _handleDataChange(change);
-      });
-      
-      // Enable sync for all data types
-      _realtimeSync.enableSyncFor([
-        'departments',
-        'products',
-        'suspend_orders',
-        'orders',
-        'users',
-      ]);
-      
-      // Start auto-refresh timer (every 5 minutes as backup)
-      _autoRefreshTimer = Timer.periodic(const Duration(minutes: 5), (_) {
-        if (_isRealtimeEnabled) {
-          refreshAllData();
-        }
-      });
-      
-      print('✅ DatabaseDataProvider initialized with real-time sync');
-    } catch (e) {
-      print('❌ Failed to initialize real-time sync: $e');
-      _errorMessage = 'Real-time sync initialization failed: $e';
-      notifyListeners();
-    }
-  }
-
-  /// Register callbacks for real-time updates
-  void _registerRealtimeCallbacks() {
-    _realtimeSync.registerUpdateCallback('departments', () {
-      print('🔄 Real-time update: departments');
-      loadDepartments();
-    });
-    
-    _realtimeSync.registerUpdateCallback('products', () {
-      print('🔄 Real-time update: products');
-      loadMenuItems();
-    });
-    
-    _realtimeSync.registerUpdateCallback('suspend_orders', () {
-      print('🔄 Real-time update: suspend_orders');
-      loadSuspendOrders();
-    });
-    
-    _realtimeSync.registerUpdateCallback('orders', () {
-      print('🔄 Real-time update: orders');
-      loadOrders();
-    });
-    
-    _realtimeSync.registerUpdateCallback('users', () {
-      print('🔄 Real-time update: users');
-      loadUsers();
-    });
-  }
-
-  /// Handle real-time data changes
-  void _handleDataChange(Map<String, dynamic> change) {
-    final dataType = change['type'] as String;
-    final timestamp = change['timestamp'] as String;
-    
-    print('📊 Processing real-time change: $dataType at $timestamp');
-    
-    // Update UI based on change type
-    switch (dataType) {
-      case 'departments':
-        loadDepartments();
-        break;
-      case 'products':
-        loadMenuItems();
-        break;
-      case 'suspend_orders':
-        loadSuspendOrders();
-        break;
-      case 'orders':
-        loadOrders();
-        break;
-      case 'users':
-        loadUsers();
-        break;
-      default:
-        print('⚠️ Unknown data change type: $dataType');
-    }
-  }
-
-  /// Enable or disable real-time synchronization
-  void setRealtimeEnabled(bool enabled) {
-    _isRealtimeEnabled = enabled;
-    
-    if (enabled) {
-      _realtimeSync.enableSyncFor([
-        'departments',
-        'products',
-        'suspend_orders',
-        'orders',
-        'users',
-      ]);
-      print('✅ Real-time sync enabled');
-    } else {
-      _realtimeSync.disableSyncFor([
-        'departments',
-        'products',
-        'suspend_orders',
-        'orders',
-        'users',
-      ]);
-      print('❌ Real-time sync disabled');
-    }
-    
-    notifyListeners();
-  }
-
-  /// Force refresh all data
-  Future<void> forceRefresh() async {
-    print('🔄 Force refreshing all data...');
-    await _realtimeSync.forceRefresh();
-  }
-
-  /// Get real-time sync status
-  Map<String, dynamic> getRealtimeStatus() {
-    return {
-      'isEnabled': _isRealtimeEnabled,
-      'isConnected': isConnected,
-      'isPolling': isPolling,
-      'isWebSocketConnected': isWebSocketConnected,
-      'syncStatus': _realtimeSync.getSyncStatus(),
-    };
-  }
 
   /// Load all menu items from database
   Future<void> loadMenuItems() async {
@@ -395,24 +234,6 @@ class DatabaseDataProvider extends ChangeNotifier {
     print('📊 Final counts - Departments: ${_departments.length}, Menu Items: ${_menuItems.length}, Suspend Orders: ${_suspendOrders.length}');
   }
 
-  /// Dispose and cleanup resources
-  @override
-  void dispose() {
-    print('🔄 Disposing DatabaseDataProvider...');
-    
-    // Cancel subscriptions
-    _connectionStatusSubscription?.cancel();
-    _dataChangesSubscription?.cancel();
-    
-    // Cancel auto-refresh timer
-    _autoRefreshTimer?.cancel();
-    
-    // Disconnect real-time sync
-    _realtimeSync.disconnect();
-    
-    super.dispose();
-    print('✅ DatabaseDataProvider disposed');
-  }
 
   /// Add item to cart (create suspend order)
   Future<void> addToCart(SuspendOrder order) async {
