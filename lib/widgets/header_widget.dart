@@ -66,19 +66,6 @@ class HeaderWidget extends StatelessWidget {
           Row(
             mainAxisSize: MainAxisSize.min,
             children: [
-              Container(
-                padding: const EdgeInsets.all(6),
-                decoration: BoxDecoration(
-                  color: theme.colorScheme.onPrimary.withOpacity(0.1),
-                  borderRadius: BorderRadius.circular(10),
-                ),
-                child: Icon(
-                  Icons.restaurant,
-                  color: theme.colorScheme.onPrimary,
-                  size: 20,
-                ),
-              ),
-              const SizedBox(width: 8),
               // Company Logo
               Container(
                 height: 32,
