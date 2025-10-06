@@ -1,229 +1,232 @@
 import 'package:flutter/material.dart';
+import 'package:provider/provider.dart';
+import '../providers/database_data_provider.dart';
+import '../models/suspend_order.dart';
 
 class RoomServiceViewWidget extends StatelessWidget {
   const RoomServiceViewWidget({super.key});
-
-  // Mock room data
-  final List<Map<String, dynamic>> _rooms = const [
-    {'id': 1, 'number': 'Room 101', 'isPaid': false},
-    {'id': 2, 'number': 'Room 102', 'isPaid': true},
-    {'id': 3, 'number': 'Room 201', 'isPaid': false},
-    {'id': 4, 'number': 'Room 202', 'isPaid': true},
-    {'id': 5, 'number': 'Room 301', 'isPaid': false},
-    {'id': 6, 'number': 'Room 302', 'isPaid': true},
-    {'id': 7, 'number': 'Room 401', 'isPaid': false},
-    {'id': 8, 'number': 'Room 402', 'isPaid': true},
-  ];
 
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
 
-    return Container(
-      padding: const EdgeInsets.all(16),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Text(
-            'Room Service Status',
-            style: theme.textTheme.headlineSmall?.copyWith(
-              fontWeight: FontWeight.bold,
-              color: theme.colorScheme.primary,
-            ),
-          ),
-          const SizedBox(height: 16),
-          Expanded(
-            child: GridView.builder(
-              gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
-                crossAxisCount: 2,
-                childAspectRatio: 1.2,
-                crossAxisSpacing: 12,
-                mainAxisSpacing: 12,
-              ),
-              itemCount: _rooms.length,
-              itemBuilder: (context, index) {
-                final room = _rooms[index];
-                final isPaid = room['isPaid'] as bool;
+    return Consumer<DatabaseDataProvider>(
+      builder: (context, databaseData, child) {
+        // Load suspend orders if not already loaded
+        if (databaseData.suspendOrders.isEmpty &&
+            !databaseData.isLoadingSuspendOrders) {
+          WidgetsBinding.instance.addPostFrameCallback((_) {
+            databaseData.loadSuspendOrders();
+          });
+        }
 
-                return GestureDetector(
-                  onTap: isPaid
-                      ? null
-                      : () => _showRoomDetails(context, theme, room),
-                  child: Container(
-                    decoration: BoxDecoration(
-                      gradient: LinearGradient(
-                        begin: Alignment.topLeft,
-                        end: Alignment.bottomRight,
-                        colors: isPaid
-                            ? [Colors.green.shade100, Colors.green.shade50]
-                            : [Colors.orange.shade100, Colors.orange.shade50],
-                      ),
-                      borderRadius: BorderRadius.circular(20),
-                      border: Border.all(
-                        color: isPaid
-                            ? Colors.green.shade400
-                            : Colors.orange.shade400,
-                        width: 3,
-                      ),
-                      boxShadow: [
-                        BoxShadow(
-                          color: (isPaid ? Colors.green : Colors.orange)
-                              .withOpacity(0.3),
-                          blurRadius: 12,
-                          offset: const Offset(0, 6),
-                        ),
-                      ],
-                    ),
-                    child: Column(
-                      mainAxisAlignment: MainAxisAlignment.center,
-                      children: [
-                        Container(
-                          padding: const EdgeInsets.all(12),
-                          decoration: BoxDecoration(
-                            color: isPaid
-                                ? Colors.green.shade600
-                                : Colors.orange.shade600,
-                            shape: BoxShape.circle,
-                            boxShadow: [
-                              BoxShadow(
-                                color: (isPaid ? Colors.green : Colors.orange)
-                                    .withOpacity(0.3),
-                                blurRadius: 8,
-                                offset: const Offset(0, 4),
-                              ),
-                            ],
-                          ),
-                          child: Icon(
-                            isPaid
-                                ? Icons.check_circle_rounded
-                                : Icons.hotel_rounded,
-                            size: 28,
-                            color: Colors.white,
-                          ),
-                        ),
-                        const SizedBox(height: 12),
-                        Text(
-                          room['number'],
-                          style: TextStyle(
-                            fontSize: 18,
-                            fontWeight: FontWeight.bold,
-                            color: isPaid
-                                ? Colors.green.shade800
-                                : Colors.orange.shade800,
-                          ),
-                        ),
-                        const SizedBox(height: 6),
-                        Container(
-                          padding: const EdgeInsets.symmetric(
-                            horizontal: 12,
-                            vertical: 4,
-                          ),
-                          decoration: BoxDecoration(
-                            color: isPaid
-                                ? Colors.green.shade600
-                                : Colors.orange.shade600,
-                            borderRadius: BorderRadius.circular(12),
-                          ),
-                          child: Text(
-                            isPaid ? 'PAID' : 'UNPAID',
-                            style: const TextStyle(
-                              fontSize: 11,
-                              fontWeight: FontWeight.bold,
-                              color: Colors.white,
-                              letterSpacing: 0.5,
-                            ),
-                          ),
-                        ),
-                      ],
+        // Filter room orders (starting with "R")
+        final roomOrders = databaseData.suspendOrders
+            .where((order) => order.table.startsWith('R'))
+            .toList();
+
+        // Group orders by room
+        final Map<String, List<SuspendOrder>> groupedOrders = {};
+        for (final order in roomOrders) {
+          if (!groupedOrders.containsKey(order.table)) {
+            groupedOrders[order.table] = [];
+          }
+          groupedOrders[order.table]!.add(order);
+        }
+
+        final unpaidRooms = groupedOrders.keys.toList()..sort();
+
+        return Container(
+          padding: const EdgeInsets.all(16),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              // Header
+              Row(
+                children: [
+                  Icon(Icons.hotel, color: theme.colorScheme.primary, size: 28),
+                  const SizedBox(width: 12),
+                  Text(
+                    'Unpaid Rooms',
+                    style: theme.textTheme.headlineSmall?.copyWith(
+                      fontWeight: FontWeight.bold,
+                      color: theme.colorScheme.onSurface,
                     ),
                   ),
-                );
-              },
-            ),
-          ),
-        ],
-      ),
-    );
-  }
-
-  void _showRoomDetails(
-    BuildContext context,
-    ThemeData theme,
-    Map<String, dynamic> room,
-  ) {
-    showDialog(
-      context: context,
-      builder: (context) => AlertDialog(
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
-        title: Row(
-          children: [
-            Icon(
-              Icons.hotel_rounded,
-              color: Colors.orange,
-              size: 24,
-            ),
-            const SizedBox(width: 12),
-            Text(room['number']),
-          ],
-        ),
-        content: SizedBox(
-          width: 500,
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              // Status and Summary
-              Container(
-                padding: const EdgeInsets.all(16),
-                decoration: BoxDecoration(
-                  color: Colors.orange.shade50,
-                  borderRadius: BorderRadius.circular(12),
-                  border: Border.all(color: Colors.orange.shade200),
-                ),
-                child: Column(
-                  children: [
-                    Row(
-                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                      children: [
-                        Text(
-                          'Status:',
-                          style: TextStyle(
-                            fontWeight: FontWeight.w600,
-                            color: Colors.orange.shade700,
-                          ),
-                        ),
-                        Text(
-                          'Unpaid',
-                          style: TextStyle(
-                            fontWeight: FontWeight.bold,
-                            color: Colors.orange.shade700,
-                          ),
-                        ),
-                      ],
+                  const Spacer(),
+                  // Refresh Button
+                  IconButton(
+                    onPressed: () {
+                      databaseData.loadSuspendOrders();
+                    },
+                    icon: Icon(
+                      Icons.refresh,
+                      color: theme.colorScheme.primary,
                     ),
-                  ],
-                ),
+                    tooltip: 'Refresh Rooms',
+                  ),
+                  const SizedBox(width: 8),
+                  Container(
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: 8,
+                      vertical: 4,
+                    ),
+                    decoration: BoxDecoration(
+                      color: theme.colorScheme.primary.withOpacity(0.1),
+                      borderRadius: BorderRadius.circular(12),
+                    ),
+                    child: Text(
+                      '${unpaidRooms.length}',
+                      style: TextStyle(
+                        color: theme.colorScheme.primary,
+                        fontWeight: FontWeight.bold,
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+              const SizedBox(height: 20),
+              // Rooms Grid
+              Expanded(
+                child: databaseData.isLoadingSuspendOrders
+                    ? Center(
+                        child: Column(
+                          mainAxisAlignment: MainAxisAlignment.center,
+                          children: [
+                            CircularProgressIndicator(
+                              color: theme.colorScheme.primary,
+                            ),
+                            const SizedBox(height: 16),
+                            Text(
+                              'Loading unpaid rooms...',
+                              style: theme.textTheme.titleMedium?.copyWith(
+                                color: theme.colorScheme.onSurface.withOpacity(0.7),
+                              ),
+                            ),
+                          ],
+                        ),
+                      )
+                    : unpaidRooms.isEmpty
+                        ? Center(
+                            child: Column(
+                              mainAxisAlignment: MainAxisAlignment.center,
+                              children: [
+                                Icon(
+                                  Icons.hotel_outlined,
+                                  size: 64,
+                                  color: theme.colorScheme.onSurface.withOpacity(
+                                    0.3,
+                                  ),
+                                ),
+                                const SizedBox(height: 16),
+                                Text(
+                                  'No unpaid rooms',
+                                  style: theme.textTheme.titleLarge?.copyWith(
+                                    color: theme.colorScheme.onSurface.withOpacity(
+                                      0.6,
+                                    ),
+                                  ),
+                                ),
+                                const SizedBox(height: 8),
+                                Text(
+                                  'All rooms are paid or no orders found',
+                                  style: theme.textTheme.bodyMedium?.copyWith(
+                                    color: theme.colorScheme.onSurface.withOpacity(
+                                      0.5,
+                                    ),
+                                  ),
+                                  textAlign: TextAlign.center,
+                                ),
+                                const SizedBox(height: 16),
+                                ElevatedButton.icon(
+                                  onPressed: () {
+                                    databaseData.loadSuspendOrders();
+                                  },
+                                  icon: Icon(Icons.refresh),
+                                  label: Text('Refresh'),
+                                  style: ElevatedButton.styleFrom(
+                                    backgroundColor: theme.colorScheme.primary,
+                                    foregroundColor: Colors.white,
+                                  ),
+                                ),
+                              ],
+                            ),
+                          )
+                    : GridView.builder(
+                        gridDelegate:
+                            const SliverGridDelegateWithFixedCrossAxisCount(
+                              crossAxisCount: 2,
+                              childAspectRatio: 1.2,
+                              crossAxisSpacing: 16,
+                              mainAxisSpacing: 16,
+                            ),
+                        itemCount: unpaidRooms.length,
+                        itemBuilder: (context, index) {
+                          final roomNumber = unpaidRooms[index];
+
+                          return Container(
+                            decoration: BoxDecoration(
+                              gradient: LinearGradient(
+                                begin: Alignment.topLeft,
+                                end: Alignment.bottomRight,
+                                colors: [
+                                  Colors.blue.shade100,
+                                  Colors.blue.shade50,
+                                ],
+                              ),
+                              borderRadius: BorderRadius.circular(20),
+                              border: Border.all(
+                                color: Colors.blue.shade400,
+                                width: 2,
+                              ),
+                              boxShadow: [
+                                BoxShadow(
+                                  color: Colors.blue.withOpacity(0.3),
+                                  blurRadius: 12,
+                                  offset: const Offset(0, 6),
+                                ),
+                              ],
+                            ),
+                            child: Padding(
+                              padding: const EdgeInsets.all(16),
+                              child: Column(
+                                mainAxisAlignment: MainAxisAlignment.center,
+                                children: [
+                                  // Room Icon
+                                  Container(
+                                    width: 50,
+                                    height: 50,
+                                    decoration: BoxDecoration(
+                                      color: Colors.blue.shade600,
+                                      borderRadius: BorderRadius.circular(12),
+                                    ),
+                                    child: Icon(
+                                      Icons.hotel,
+                                      color: Colors.white,
+                                      size: 24,
+                                    ),
+                                  ),
+                                  const SizedBox(height: 12),
+                                  // Room Number
+                                  Text(
+                                    'Room ${roomNumber.substring(1)}', // Remove "R" prefix
+                                    style: theme.textTheme.titleMedium
+                                        ?.copyWith(
+                                          fontWeight: FontWeight.bold,
+                                          color: Colors.blue.shade800,
+                                        ),
+                                  ),
+                                ],
+                              ),
+                            ),
+                          );
+                        },
+                      ),
               ),
             ],
           ),
-        ),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.of(context).pop(),
-            child: const Text('Close'),
-          ),
-          ElevatedButton(
-            onPressed: () {
-              Navigator.of(context).pop();
-              // Here you can add logic to process payment
-            },
-            style: ElevatedButton.styleFrom(
-              backgroundColor: Colors.green,
-              foregroundColor: Colors.white,
-            ),
-            child: const Text('Mark as Paid'),
-          ),
-        ],
-      ),
+        );
+      },
     );
   }
 }
