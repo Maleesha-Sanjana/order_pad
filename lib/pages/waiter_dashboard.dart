@@ -30,8 +30,15 @@ class _WaiterDashboardState extends State<WaiterDashboard> {
   void initState() {
     super.initState();
     // Load database data when the page initializes
-    WidgetsBinding.instance.addPostFrameCallback((_) {
-      context.read<DatabaseDataProvider>().loadAllData();
+    WidgetsBinding.instance.addPostFrameCallback((_) async {
+      final databaseProvider = context.read<DatabaseDataProvider>();
+      
+      // Initialize real-time sync first
+      await databaseProvider.initialize();
+      
+      // Load all data
+      await databaseProvider.loadAllData();
+      
       // Also load menu data for compatibility
       context.read<MenuProvider>().loadMenuData();
     });

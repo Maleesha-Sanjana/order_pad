@@ -2,6 +2,8 @@ const express = require('express');
 const cors = require('cors');
 const sql = require('mssql');
 const config = require('./config');
+const http = require('http');
+const WebSocket = require('ws');
 
 const app = express();
 const PORT = process.env.PORT || 3000;
@@ -12,6 +14,10 @@ app.use(express.json());
 
 // Database connection pool
 let pool;
+
+// WebSocket server
+let wss;
+const connectedClients = new Set();
 
 // Initialize database connection
 async function initializeDatabase() {
@@ -43,6 +49,133 @@ async function initializeDatabase() {
 
 // Initialize database on startup
 initializeDatabase();
+
+// ==================== WEBSOCKET SERVER ====================
+
+// Initialize WebSocket server
+function initializeWebSocket(server) {
+  wss = new WebSocket.Server({ 
+    server,
+    path: '/ws',
+    perMessageDeflate: false
+  });
+
+  wss.on('connection', (ws, req) => {
+    console.log('🔌 WebSocket client connected from:', req.socket.remoteAddress);
+    connectedClients.add(ws);
+
+    // Send connection status
+    ws.send(JSON.stringify({
+      type: 'connection_status',
+      status: 'connected',
+      timestamp: new Date().toISOString()
+    }));
+
+    // Handle client messages
+    ws.on('message', (message) => {
+      try {
+        const data = JSON.parse(message);
+        console.log('📨 WebSocket message received:', data.type);
+        
+        switch (data.type) {
+          case 'ping':
+            ws.send(JSON.stringify({
+              type: 'pong',
+              timestamp: new Date().toISOString()
+            }));
+            break;
+          case 'subscribe':
+            // Handle subscription to specific data types
+            console.log('📝 Client subscribed to:', data.dataTypes);
+            break;
+          default:
+            console.log('⚠️ Unknown WebSocket message type:', data.type);
+        }
+      } catch (error) {
+        console.error('❌ Error processing WebSocket message:', error);
+      }
+    });
+
+    // Handle client disconnect
+    ws.on('close', () => {
+      console.log('🔌 WebSocket client disconnected');
+      connectedClients.delete(ws);
+    });
+
+    // Handle errors
+    ws.on('error', (error) => {
+      console.error('❌ WebSocket error:', error);
+      connectedClients.delete(ws);
+    });
+  });
+
+  console.log('✅ WebSocket server initialized');
+}
+
+// Broadcast data changes to all connected clients
+function broadcastDataChange(dataType, data) {
+  if (connectedClients.size === 0) return;
+
+  const message = JSON.stringify({
+    type: 'data_change',
+    dataType: dataType,
+    data: data,
+    timestamp: new Date().toISOString()
+  });
+
+  console.log(`📡 Broadcasting ${dataType} change to ${connectedClients.size} clients`);
+  
+  connectedClients.forEach((client) => {
+    if (client.readyState === WebSocket.OPEN) {
+      client.send(message);
+    } else {
+      // Remove disconnected clients
+      connectedClients.delete(client);
+    }
+  });
+}
+
+// Check for data changes endpoint
+app.get('/api/sync/check-changes', async (req, res) => {
+  try {
+    if (!pool) {
+      return res.status(503).json({ error: 'Database not connected' });
+    }
+    
+    const { type } = req.query;
+    
+    let query;
+    switch (type) {
+      case 'departments':
+        query = 'SELECT MAX(ModifiedDate) as lastModified FROM inv_department';
+        break;
+      case 'products':
+        query = 'SELECT MAX(ModifiedDate) as lastModified FROM inv_productmaster';
+        break;
+      case 'suspend_orders':
+        query = 'SELECT MAX(CreatedDate) as lastModified FROM inv_suspend';
+        break;
+      case 'orders':
+        query = 'SELECT MAX(CreatedDate) as lastModified FROM inv_orders';
+        break;
+      default:
+        return res.status(400).json({ error: 'Invalid data type' });
+    }
+    
+    const result = await pool.request().query(query);
+    const lastModified = result.recordset[0]?.lastModified || new Date(0);
+    
+    res.json({
+      success: true,
+      dataType: type,
+      lastModified: lastModified.toISOString(),
+      hasChanges: true // For now, always return true to trigger updates
+    });
+  } catch (err) {
+    console.error('Error checking data changes:', err);
+    res.status(500).json({ error: 'Failed to check data changes' });
+  }
+});
 
 // ==================== API ROUTES ====================
 
@@ -566,6 +699,14 @@ app.post('/api/suspend-orders', async (req, res) => {
     
     const newId = result.recordset[0].id;
     console.log(`✅ Created suspend order item with ID: ${newId}`);
+    
+    // Broadcast the change to connected clients
+    broadcastDataChange('suspend_orders', {
+      action: 'created',
+      id: newId,
+      table: table
+    });
+    
     res.json({ success: true, id: newId });
   } catch (err) {
     console.error('Error creating suspend order:', err);
@@ -677,6 +818,13 @@ app.put('/api/suspend-orders/:id', async (req, res) => {
       `);
     
     console.log(`✅ Updated suspend order with ID: ${id}`);
+    
+    // Broadcast the change to connected clients
+    broadcastDataChange('suspend_orders', {
+      action: 'updated',
+      id: id
+    });
+    
     res.json({ success: true });
   } catch (err) {
     console.error('Error updating suspend order:', err);
@@ -698,6 +846,13 @@ app.delete('/api/suspend-orders/:id', async (req, res) => {
       .query('DELETE FROM inv_suspend WHERE id = @id');
     
     console.log(`✅ Deleted suspend order with ID: ${id}`);
+    
+    // Broadcast the change to connected clients
+    broadcastDataChange('suspend_orders', {
+      action: 'deleted',
+      id: id
+    });
+    
     res.json({ success: true });
   } catch (err) {
     console.error('Error deleting suspend order:', err);
@@ -905,11 +1060,18 @@ app.delete('/api/suspend-orders/table/:tableNumber', async (req, res) => {
   }
 });
 
+// Create HTTP server
+const server = http.createServer(app);
+
+// Initialize WebSocket server
+initializeWebSocket(server);
+
 // Start server
-app.listen(PORT, '0.0.0.0', () => {
+server.listen(PORT, '0.0.0.0', () => {
   console.log(`🚀 Server running on http://0.0.0.0:${PORT}`);
   console.log(`📊 API endpoints available at http://localhost:${PORT}/api/`);
   console.log(`📊 Network access available at http://172.20.10.3:${PORT}/api/`);
+  console.log(`🔌 WebSocket server available at ws://172.20.10.3:${PORT}/ws`);
 });
 
 // Graceful shutdown
