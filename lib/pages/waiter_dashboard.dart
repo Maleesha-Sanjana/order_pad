@@ -33,9 +33,6 @@ class _WaiterDashboardState extends State<WaiterDashboard> {
     WidgetsBinding.instance.addPostFrameCallback((_) async {
       final databaseProvider = context.read<DatabaseDataProvider>();
       
-      // Initialize real-time sync first
-      await databaseProvider.initialize();
-      
       // Load all data
       await databaseProvider.loadAllData();
       

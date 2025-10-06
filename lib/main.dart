@@ -7,12 +7,7 @@ import 'providers/menu_provider.dart';
 import 'providers/cart_provider.dart';
 import 'providers/database_data_provider.dart';
 
-void main() async {
-  WidgetsFlutterBinding.ensureInitialized();
-
-  // Initialize real-time sync service
-  print('🔄 Initializing real-time sync service...');
-
+void main() {
   runApp(const MyApp());
 }
 
