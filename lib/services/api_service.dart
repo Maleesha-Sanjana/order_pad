@@ -9,7 +9,7 @@ import '../models/salesman.dart';
 import '../models/suspend_order.dart';
 
 class ApiService {
-  static const String baseUrl = 'http://172.20.10.3:3000/api';
+  static const String baseUrl = 'http://localhost:3000/api';
 
   // Helper method to handle HTTP responses
   static Map<String, dynamic> _handleResponse(http.Response response) {

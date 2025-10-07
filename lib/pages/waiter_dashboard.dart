@@ -32,10 +32,10 @@ class _WaiterDashboardState extends State<WaiterDashboard> {
     // Load database data when the page initializes
     WidgetsBinding.instance.addPostFrameCallback((_) async {
       final databaseProvider = context.read<DatabaseDataProvider>();
-      
+
       // Load all data
       await databaseProvider.loadAllData();
-      
+
       // Also load menu data for compatibility
       context.read<MenuProvider>().loadMenuData();
     });
@@ -906,7 +906,12 @@ class _WaiterDashboardState extends State<WaiterDashboard> {
         print('   - Quantity: ${cartItem.quantity}');
         print('   - Total: ${cartItem.totalPrice}');
 
+        // Generate unique ID using timestamp + counter
+        final orderId = DateTime.now().millisecondsSinceEpoch + i;
+        print('🔢 Generated Order ID: $orderId');
+
         final suspendOrder = SuspendOrder(
+          id: orderId,
           productCode: cartItem.foodItem.id,
           productDescription: cartItem.foodItem.name,
           unit: 'piece',
