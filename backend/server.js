@@ -184,6 +184,51 @@ app.get('/api/health', (req, res) => {
   res.json({ status: 'OK', message: 'POS Solution API is running' });
 });
 
+// Check sysconfig table structure and data
+app.get('/api/sysconfig/check', async (req, res) => {
+  try {
+    if (!pool) {
+      return res.status(503).json({ error: 'Database not connected' });
+    }
+    
+    // Check if sysconfig table exists
+    const tableCheck = await pool.request().query(`
+      SELECT * FROM INFORMATION_SCHEMA.TABLES 
+      WHERE TABLE_NAME = 'sysconfig'
+    `);
+    
+    if (tableCheck.recordset.length === 0) {
+      return res.json({
+        success: false,
+        message: 'sysconfig table does not exist',
+        tableExists: false
+      });
+    }
+    
+    // Get columns
+    const columns = await pool.request().query(`
+      SELECT COLUMN_NAME, DATA_TYPE 
+      FROM INFORMATION_SCHEMA.COLUMNS 
+      WHERE TABLE_NAME = 'sysconfig'
+    `);
+    
+    // Get data
+    const data = await pool.request().query(`SELECT * FROM sysconfig`);
+    
+    res.json({
+      success: true,
+      tableExists: true,
+      columns: columns.recordset,
+      data: data.recordset,
+      hasUnit: columns.recordset.some(col => col.COLUMN_NAME === 'Unit'),
+      hasReceiptNo: columns.recordset.some(col => col.COLUMN_NAME === 'ReceiptNo')
+    });
+  } catch (err) {
+    console.error('Error checking sysconfig:', err);
+    res.status(500).json({ error: 'Failed to check sysconfig', details: err.message });
+  }
+});
+
 // Check and ensure inv_suspend table structure
 app.get('/api/suspend-orders/check-structure', async (req, res) => {
   try {
@@ -734,6 +779,40 @@ app.post('/api/suspend-orders', async (req, res) => {
     
     console.log(`📋 Using provided ID: ${id}`);
     
+    // Get ReceiptNo from sysconfig (independent from ID)
+    let finalReceiptNo = receiptNo;
+    if (!finalReceiptNo) {
+      try {
+        console.log('🔄 Getting ReceiptNo from sysconfig...');
+        const sysconfigResult = await pool.request().query(`
+          SELECT ReceiptNo FROM sysconfig
+        `);
+        
+        if (sysconfigResult.recordset.length > 0) {
+          const currentCounter = sysconfigResult.recordset[0].ReceiptNo;
+          const sysconfigCounter = parseInt(currentCounter) || 1;
+          
+          // Format ReceiptNo as 9-digit number (e.g., "100000001")
+          finalReceiptNo = (100000000 + sysconfigCounter).toString();
+          console.log(`📋 Formatted ReceiptNo from sysconfig: ${finalReceiptNo}`);
+          
+          // Increment sysconfig counter for next order
+          const nextCounter = sysconfigCounter + 1;
+          await pool.request()
+            .input('newReceiptNo', sql.Int, nextCounter)
+            .query('UPDATE sysconfig SET ReceiptNo = @newReceiptNo');
+          
+          console.log(`✅ Updated sysconfig ReceiptNo to: ${nextCounter}`);
+        } else {
+          console.log(`⚠️  No sysconfig found, using default`);
+          finalReceiptNo = '100000001';
+        }
+      } catch (err) {
+        console.error('Error getting ReceiptNo from sysconfig:', err);
+        finalReceiptNo = null;
+      }
+    }
+    
     // Insert with the provided ID (no IDENTITY_INSERT needed - it's not an identity column)
     const result = await pool.request()
       .input('id', sql.Int, id)
@@ -752,13 +831,15 @@ app.post('/api/suspend-orders', async (req, res) => {
       .input('batchNo', sql.NVarChar, finalBatchNo)
       .input('serialNo', sql.NVarChar, serialNo || '')
       .input('customer', sql.NVarChar, '....')
+      .input('receiptNo', sql.NVarChar, finalReceiptNo)
+      .input('kotPrint', sql.Bit, 1)
       .query(`
         INSERT INTO inv_suspend (
           id, ProductCode, ProductDescription, UnitPrice, Qty, Amount, SalesMan, [Table], Chair,
-          FreeQty, DiscPer, DiscAmount, LocaCode, BatchNo, SerialNo, Customer
+          FreeQty, DiscPer, DiscAmount, LocaCode, BatchNo, SerialNo, Customer, ReceiptNo, KotPrint
         ) VALUES (
           @id, @productCode, @productDescription, @unitPrice, @qty, @amount, @salesMan, @table, @chair,
-          @freeQty, @discPer, @discAmount, @locaCode, @batchNo, @serialNo, @customer
+          @freeQty, @discPer, @discAmount, @locaCode, @batchNo, @serialNo, @customer, @receiptNo, @kotPrint
         )
       `);
     
@@ -925,6 +1006,61 @@ app.delete('/api/suspend-orders/:id', async (req, res) => {
   }
 });
 
+// Get receipt number for order (combines unit and ReceiptNo from sysconfig)
+app.get('/api/orders/generate-receipt/:tableNumber', async (req, res) => {
+  try {
+    if (!pool) {
+      console.error('❌ Database not connected');
+      return res.status(503).json({ 
+        success: false,
+        error: 'Database not connected' 
+      });
+    }
+    
+    const { tableNumber } = req.params;
+    console.log(`📋 Generating receipt number for table/room: ${tableNumber}`);
+    
+    // Get both Unit and ReceiptNo from sysconfig
+    const sysconfigResult = await pool.request().query(`SELECT Unit, ReceiptNo FROM sysconfig`);
+    
+    if (sysconfigResult.recordset.length === 0) {
+      console.error('❌ Sysconfig not found in database');
+      return res.status(404).json({ 
+        success: false,
+        error: 'Sysconfig not found' 
+      });
+    }
+    
+    // Get unit from sysconfig (first number)
+    const unit = sysconfigResult.recordset[0].Unit?.toString() || '1';
+    console.log(`📋 Unit from sysconfig: ${unit}`);
+    
+    // Get ReceiptNo counter from sysconfig
+    const counter = parseInt(sysconfigResult.recordset[0].ReceiptNo) || 1;
+    const receiptCounter = counter.toString().padStart(7, '0');
+    console.log(`📋 ReceiptNo from sysconfig: ${receiptCounter}`);
+    
+    // Combine unit + receiptCounter (e.g., "1" + "0000001" = "10000001")
+    const finalReceiptNo = unit + receiptCounter;
+    console.log(`✅ Generated receipt number: ${finalReceiptNo}`);
+    
+    res.json({ 
+      success: true, 
+      receiptNo: finalReceiptNo,
+      unit: unit,
+      counter: receiptCounter
+    });
+  } catch (err) {
+    console.error('❌ Error generating receipt number:', err);
+    console.error('❌ Error details:', err.message);
+    res.status(500).json({ 
+      success: false,
+      error: 'Failed to generate receipt number',
+      details: err.message
+    });
+  }
+});
+
 // Confirm order (move from suspend to final order)
 app.post('/api/orders/confirm/:tableNumber', async (req, res) => {
   try {
@@ -992,8 +1128,39 @@ app.post('/api/orders/confirm/:tableNumber', async (req, res) => {
       orderNumber = Date.now();
     }
     
-    // Generate receipt number with incremented counter
-    const finalReceiptNo = receiptNo || `RCP${orderNumber.toString().padStart(6, '0')}`;
+    // Generate receipt number: both unit and counter from sysconfig
+    let finalReceiptNo = receiptNo;
+    if (!finalReceiptNo) {
+      try {
+        // Get both Unit and ReceiptNo from sysconfig
+        const sysconfigResult = await pool.request().query(`SELECT Unit, ReceiptNo FROM sysconfig`);
+        if (sysconfigResult.recordset.length > 0) {
+          // Get unit from sysconfig (first number)
+          const unit = sysconfigResult.recordset[0].Unit || '1';
+          
+          // Get counter from sysconfig
+          const counter = parseInt(sysconfigResult.recordset[0].ReceiptNo) || 1;
+          const receiptCounter = counter.toString().padStart(7, '0');
+          
+          // Combine: unit + counter (e.g., "1" + "0000001" = "10000001")
+          finalReceiptNo = unit + receiptCounter;
+          console.log(`📋 Generated receipt number: ${finalReceiptNo} (unit: ${unit}, counter: ${receiptCounter})`);
+          
+          // Increment sysconfig counter for next order
+          const nextCounter = counter + 1;
+          await pool.request()
+            .input('newReceiptNo', sql.Int, nextCounter)
+            .query('UPDATE sysconfig SET ReceiptNo = @newReceiptNo');
+          
+          console.log(`✅ Updated sysconfig ReceiptNo to: ${nextCounter}`);
+        } else {
+          finalReceiptNo = '10000001';
+        }
+      } catch (err) {
+        console.error('Error generating receipt number:', err);
+        finalReceiptNo = `RCP${orderNumber}`;
+      }
+    }
     
     // Update suspend orders with receipt number and mark as confirmed
     await pool.request()
