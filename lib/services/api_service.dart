@@ -9,7 +9,7 @@ import '../models/salesman.dart';
 import '../models/suspend_order.dart';
 
 class ApiService {
-  static const String baseUrl = 'http://172.20.10.3:3000/api';
+  static const String baseUrl = 'http://localhost:3000/api';
 
   // Helper method to handle HTTP responses
   static Map<String, dynamic> _handleResponse(http.Response response) {
@@ -415,6 +415,32 @@ class ApiService {
       }
     } catch (e) {
       print('❌ API: Error confirming order: $e');
+      rethrow;
+    }
+  }
+
+  static Future<Map<String, dynamic>> generateReceiptNumber(
+    String tableNumber,
+  ) async {
+    try {
+      print('🔄 API: Generating receipt number for table: $tableNumber');
+
+      final response = await http.get(
+        Uri.parse('$baseUrl/orders/generate-receipt/$tableNumber'),
+      );
+
+      print('📊 API: Generate receipt response status: ${response.statusCode}');
+
+      if (response.statusCode == 200) {
+        final result = json.decode(response.body);
+        print('✅ API: Receipt number generated: ${result['receiptNo']}');
+        return result;
+      } else {
+        print('❌ API: Failed to generate receipt number: ${response.statusCode}');
+        throw Exception('Failed to generate receipt number: ${response.statusCode}');
+      }
+    } catch (e) {
+      print('❌ API: Error generating receipt number: $e');
       rethrow;
     }
   }

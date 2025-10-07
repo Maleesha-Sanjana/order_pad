@@ -32,10 +32,10 @@ class _WaiterDashboardState extends State<WaiterDashboard> {
     // Load database data when the page initializes
     WidgetsBinding.instance.addPostFrameCallback((_) async {
       final databaseProvider = context.read<DatabaseDataProvider>();
-      
+
       // Load all data
       await databaseProvider.loadAllData();
-      
+
       // Also load menu data for compatibility
       context.read<MenuProvider>().loadMenuData();
     });
@@ -782,10 +782,31 @@ class _WaiterDashboardState extends State<WaiterDashboard> {
                   final serviceType = cart.serviceType;
                   final customerName = cart.customerName;
 
+                  // Generate receipt number from sysconfig (without timestamp fallback)
+                  String receiptNumber = '10000001'; // Default fallback
+                  try {
+                    print('🔄 Calling generateReceiptNumber API...');
+                    final receiptResult = await ApiService.generateReceiptNumber('temp');
+                    print('📊 Receipt API response: $receiptResult');
+                    
+                    if (receiptResult['success'] == true &&
+                        receiptResult['receiptNo'] != null) {
+                      receiptNumber = receiptResult['receiptNo'];
+                      print('✅ Generated receipt number: $receiptNumber');
+                    } else {
+                      print('⚠️ API returned success=false or null receiptNo');
+                      print('⚠️ Full response: $receiptResult');
+                    }
+                  } catch (e) {
+                    print('❌ Error generating receipt number: $e');
+                    print('❌ Error details: ${e.toString()}');
+                    // Keep default fallback receipt number
+                  }
+
                   // Clear the cart immediately
                   cart.clearCart();
 
-                  // Show success dialog immediately
+                  // Show success dialog immediately with generated receipt number
                   showDialog(
                     context: context,
                     barrierDismissible: false,
@@ -812,17 +833,32 @@ class _WaiterDashboardState extends State<WaiterDashboard> {
                           ),
                           const SizedBox(height: 12),
                           Text(
-                            'Receipt: RCP${DateTime.now().millisecondsSinceEpoch}',
+                            'Receipt Number: $receiptNumber',
                             style: const TextStyle(fontWeight: FontWeight.w600),
                           ),
-                          Text(
-                            'Table: $tableNumber',
-                            style: const TextStyle(fontWeight: FontWeight.w600),
-                          ),
-                          Text(
-                            'Chair: $chairNumber',
-                            style: const TextStyle(fontWeight: FontWeight.w600),
-                          ),
+                          if (tableNumber != null) ...[
+                            Text(
+                              'Table: $tableNumber',
+                              style: const TextStyle(
+                                fontWeight: FontWeight.w600,
+                              ),
+                            ),
+                            if (chairNumber != null && chairNumber.isNotEmpty)
+                              Text(
+                                'Chair: $chairNumber',
+                                style: const TextStyle(
+                                  fontWeight: FontWeight.w600,
+                                ),
+                              ),
+                          ],
+                          if (roomNumber != null) ...[
+                            Text(
+                              'Room: $roomNumber',
+                              style: const TextStyle(
+                                fontWeight: FontWeight.w600,
+                              ),
+                            ),
+                          ],
                           if (serviceType != null) ...[
                             const SizedBox(height: 8),
                             Text(
@@ -851,6 +887,7 @@ class _WaiterDashboardState extends State<WaiterDashboard> {
                     chairNumber ?? '',
                     customerName,
                     roomNumber,
+                    receiptNumber,
                   );
                 },
                 style: ElevatedButton.styleFrom(
@@ -876,6 +913,7 @@ class _WaiterDashboardState extends State<WaiterDashboard> {
     String chairNumber,
     String? customerName,
     String? roomNumber,
+    String receiptNumber,
   ) async {
     print('🔄 Starting background order processing...');
     print('📋 Cart items count: ${cartItems.length}');
@@ -897,6 +935,9 @@ class _WaiterDashboardState extends State<WaiterDashboard> {
       print('🔑 Salesman Code: ${authProvider.salesmanCode}');
 
       // Convert cart items to suspend orders and add to database
+      // Generate base ID from timestamp that fits in SQL INT
+      final baseId = (DateTime.now().millisecondsSinceEpoch ~/ 1000) % 1000000;
+
       for (int i = 0; i < cartItems.length; i++) {
         final cartItem = cartItems[i];
         print('➕ Processing item ${i + 1}/${cartItems.length}:');
@@ -906,10 +947,16 @@ class _WaiterDashboardState extends State<WaiterDashboard> {
         print('   - Quantity: ${cartItem.quantity}');
         print('   - Total: ${cartItem.totalPrice}');
 
+        // Use UI table row # with unique base
+        final orderId = baseId + (i + 1);
+        print('🔢 Generated Order ID (UI table #${i + 1}): $orderId');
+
         final suspendOrder = SuspendOrder(
+          id: orderId,
           productCode: cartItem.foodItem.id,
           productDescription: cartItem.foodItem.name,
-          unit: 'piece',
+          unit:
+              '1', // Unit used as prefix for receipt number (e.g., "1" + "0000001" = "10000001")
           costPrice: cartItem.foodItem.price * 0.7,
           unitPrice: cartItem.foodItem.price,
           wholeSalePrice: cartItem.foodItem.price * 0.85,
@@ -951,10 +998,11 @@ class _WaiterDashboardState extends State<WaiterDashboard> {
 
       // Confirm the order
       print('🔄 Confirming order for table: $tableNumber');
+      print('📋 Using receipt number: $receiptNumber');
       try {
         final result = await databaseData.confirmOrder(
           tableNumber,
-          receiptNo: 'RCP${DateTime.now().millisecondsSinceEpoch}',
+          receiptNo: receiptNumber,
           salesMan: authProvider.salesmanName.isNotEmpty
               ? authProvider.salesmanName
               : authProvider.salesmanCode,
