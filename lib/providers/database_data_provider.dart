@@ -23,6 +23,9 @@ class DatabaseDataProvider extends ChangeNotifier {
   bool _isLoadingUsers = false;
   bool _isLoadingOrders = false;
   bool _isLoadingSuspendOrders = false;
+  
+  // Loaded flags (track if data has been loaded at least once)
+  bool _suspendOrdersLoaded = false;
 
   // Error states
   String? _errorMessage;
@@ -40,6 +43,7 @@ class DatabaseDataProvider extends ChangeNotifier {
   bool get isLoadingUsers => _isLoadingUsers;
   bool get isLoadingOrders => _isLoadingOrders;
   bool get isLoadingSuspendOrders => _isLoadingSuspendOrders;
+  bool get suspendOrdersLoaded => _suspendOrdersLoaded;
 
   String? get errorMessage => _errorMessage;
 
@@ -168,6 +172,7 @@ class DatabaseDataProvider extends ChangeNotifier {
 
     try {
       _suspendOrders = await ApiService.getSuspendOrders();
+      _suspendOrdersLoaded = true; // Mark as loaded
       print('✅ Loaded ${_suspendOrders.length} suspend orders from database');
     } catch (e) {
       _errorMessage = 'Failed to load suspend orders: $e';
