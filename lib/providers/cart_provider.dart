@@ -9,12 +9,21 @@ class CartProvider extends ChangeNotifier {
   String? _tableNumber;
   String? _seatNumber;
   ServiceType? _serviceType;
+  String? _existingReceiptNo; // For adding items to existing orders
+  int _existingItemsCount = 0; // Track how many items are from existing order
 
   List<CartItem> get items => List.unmodifiable(_items);
   String? get customerName => _customerName;
   String? get tableNumber => _tableNumber;
   String? get seatNumber => _seatNumber;
   ServiceType? get serviceType => _serviceType;
+  String? get existingReceiptNo => _existingReceiptNo;
+  int get existingItemsCount => _existingItemsCount;
+  
+  // Get only new items (items added after existing items)
+  List<CartItem> get newItems => _existingItemsCount > 0 && _items.length > _existingItemsCount
+      ? _items.sublist(_existingItemsCount)
+      : (_existingItemsCount == 0 ? _items : []);
   int get itemCount {
     try {
       return _items.fold(0, (sum, item) => sum + item.quantity);
@@ -109,6 +118,18 @@ class CartProvider extends ChangeNotifier {
     _tableNumber = null;
     _seatNumber = null;
     _serviceType = null;
+    _existingReceiptNo = null;
+    _existingItemsCount = 0;
+    notifyListeners();
+  }
+  
+  void setExistingReceiptNo(String? receiptNo) {
+    _existingReceiptNo = receiptNo;
+    notifyListeners();
+  }
+  
+  void setExistingItemsCount(int count) {
+    _existingItemsCount = count;
     notifyListeners();
   }
 

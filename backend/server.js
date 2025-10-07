@@ -473,21 +473,39 @@ app.post('/api/auth/login-password', async (req, res) => {
 });
 
 
-// Get all tables
+// Get all tables with occupancy status
 app.get('/api/tables', async (req, res) => {
   try {
     if (!pool) {
       return res.status(503).json({ error: 'Database not connected' });
     }
     
-    const result = await pool.request().query(`
+    // Get all tables
+    const tablesResult = await pool.request().query(`
       SELECT idx, TableCode, TableName, Location 
       FROM inv_tables 
       ORDER BY TableCode
     `);
     
-    console.log(`✅ Loaded ${result.recordset.length} tables from inv_tables`);
-    res.json(result.recordset);
+    // Get occupied tables (tables with unpaid orders in inv_suspend)
+    const occupiedTablesResult = await pool.request().query(`
+      SELECT DISTINCT [Table] 
+      FROM inv_suspend 
+      WHERE [Table] IS NOT NULL
+    `);
+    
+    const occupiedTables = new Set(
+      occupiedTablesResult.recordset.map(row => row.Table)
+    );
+    
+    // Add isOccupied flag to each table
+    const tablesWithStatus = tablesResult.recordset.map(table => ({
+      ...table,
+      isOccupied: occupiedTables.has(table.TableCode)
+    }));
+    
+    console.log(`✅ Loaded ${tablesWithStatus.length} tables from inv_tables (${occupiedTables.size} occupied)`);
+    res.json(tablesWithStatus);
   } catch (err) {
     console.error('Error fetching tables:', err);
     res.status(500).json({ error: 'Failed to fetch tables' });
@@ -525,7 +543,7 @@ app.get('/api/chairs', async (req, res) => {
   }
 });
 
-// Get rooms from inv_rooms table
+// Get rooms from inv_rooms table with occupancy status
 app.get('/api/rooms', async (req, res) => {
   try {
     if (!pool) {
@@ -533,7 +551,9 @@ app.get('/api/rooms', async (req, res) => {
     }
     
     console.log('🔄 Fetching rooms from inv_rooms table...');
-    const result = await pool.request().query(`
+    
+    // Get all rooms
+    const roomsResult = await pool.request().query(`
       SELECT 
         idx,
         RoomCode,
@@ -543,14 +563,27 @@ app.get('/api/rooms', async (req, res) => {
       ORDER BY RoomCode
     `);
     
-    const rooms = result.recordset.map(row => ({
+    // Get occupied rooms (rooms with unpaid orders in inv_suspend)
+    const occupiedRoomsResult = await pool.request().query(`
+      SELECT DISTINCT [Table] 
+      FROM inv_suspend 
+      WHERE [Table] IS NOT NULL
+    `);
+    
+    const occupiedRooms = new Set(
+      occupiedRoomsResult.recordset.map(row => row.Table)
+    );
+    
+    // Add isOccupied flag to each room
+    const rooms = roomsResult.recordset.map(row => ({
       idx: row.idx,
       RoomCode: row.RoomCode,
       RoomName: row.RoomName,
-      Location: row.Location
+      Location: row.Location,
+      isOccupied: occupiedRooms.has(row.RoomCode)
     }));
     
-    console.log(`✅ Loaded ${rooms.length} rooms from inv_rooms table`);
+    console.log(`✅ Loaded ${rooms.length} rooms from inv_rooms table (${occupiedRooms.size} occupied)`);
     res.json(rooms);
   } catch (err) {
     console.error('Error fetching rooms:', err);
@@ -779,39 +812,11 @@ app.post('/api/suspend-orders', async (req, res) => {
     
     console.log(`📋 Using provided ID: ${id}`);
     
-    // Get ReceiptNo from sysconfig (independent from ID)
-    let finalReceiptNo = receiptNo;
-    if (!finalReceiptNo) {
-      try {
-        console.log('🔄 Getting ReceiptNo from sysconfig...');
-        const sysconfigResult = await pool.request().query(`
-          SELECT ReceiptNo FROM sysconfig
-        `);
-        
-        if (sysconfigResult.recordset.length > 0) {
-          const currentCounter = sysconfigResult.recordset[0].ReceiptNo;
-          const sysconfigCounter = parseInt(currentCounter) || 1;
-          
-          // Format ReceiptNo as 9-digit number (e.g., "100000001")
-          finalReceiptNo = (100000000 + sysconfigCounter).toString();
-          console.log(`📋 Formatted ReceiptNo from sysconfig: ${finalReceiptNo}`);
-          
-          // Increment sysconfig counter for next order
-          const nextCounter = sysconfigCounter + 1;
-          await pool.request()
-            .input('newReceiptNo', sql.Int, nextCounter)
-            .query('UPDATE sysconfig SET ReceiptNo = @newReceiptNo');
-          
-          console.log(`✅ Updated sysconfig ReceiptNo to: ${nextCounter}`);
-        } else {
-          console.log(`⚠️  No sysconfig found, using default`);
-          finalReceiptNo = '100000001';
-        }
-      } catch (err) {
-        console.error('Error getting ReceiptNo from sysconfig:', err);
-        finalReceiptNo = null;
-      }
-    }
+    // Don't generate ReceiptNo when adding items to cart
+    // Receipt number will be assigned only when order is confirmed
+    let finalReceiptNo = receiptNo || null;
+    console.log(`📋 ReceiptNo for cart item: ${finalReceiptNo || 'NULL (will be assigned on order confirmation)'}`);
+
     
     // Insert with the provided ID (no IDENTITY_INSERT needed - it's not an identity column)
     const result = await pool.request()
@@ -1037,10 +1042,10 @@ app.get('/api/orders/generate-receipt/:tableNumber', async (req, res) => {
     
     // Get ReceiptNo counter from sysconfig
     const counter = parseInt(sysconfigResult.recordset[0].ReceiptNo) || 1;
-    const receiptCounter = counter.toString().padStart(7, '0');
+    const receiptCounter = counter.toString().padStart(8, '0');
     console.log(`📋 ReceiptNo from sysconfig: ${receiptCounter}`);
     
-    // Combine unit + receiptCounter (e.g., "1" + "0000001" = "10000001")
+    // Combine unit + receiptCounter (e.g., "1" + "00000001" = "100000001")
     const finalReceiptNo = unit + receiptCounter;
     console.log(`✅ Generated receipt number: ${finalReceiptNo}`);
     
@@ -1140,9 +1145,9 @@ app.post('/api/orders/confirm/:tableNumber', async (req, res) => {
           
           // Get counter from sysconfig
           const counter = parseInt(sysconfigResult.recordset[0].ReceiptNo) || 1;
-          const receiptCounter = counter.toString().padStart(7, '0');
+          const receiptCounter = counter.toString().padStart(8, '0');
           
-          // Combine: unit + counter (e.g., "1" + "0000001" = "10000001")
+          // Combine: unit + counter (e.g., "1" + "00000001" = "100000001")
           finalReceiptNo = unit + receiptCounter;
           console.log(`📋 Generated receipt number: ${finalReceiptNo} (unit: ${unit}, counter: ${receiptCounter})`);
           
@@ -1154,7 +1159,7 @@ app.post('/api/orders/confirm/:tableNumber', async (req, res) => {
           
           console.log(`✅ Updated sysconfig ReceiptNo to: ${nextCounter}`);
         } else {
-          finalReceiptNo = '10000001';
+          finalReceiptNo = '100000001';
         }
       } catch (err) {
         console.error('Error generating receipt number:', err);

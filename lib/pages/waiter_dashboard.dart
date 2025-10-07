@@ -290,12 +290,17 @@ class _WaiterDashboardState extends State<WaiterDashboard> {
     List<Map<String, dynamic>> tables = [];
     List<Map<String, dynamic>> chairs = [];
     List<Map<String, dynamic>> rooms = [];
-    String? selectedTable;
+    
+    // Pre-populate with existing values if adding to an existing order
+    String? selectedTable = cart.tableNumber;
     String? selectedChair;
-    String? selectedRoom;
+    String? selectedRoom = cart.serviceType?.name == 'roomService' ? cart.tableNumber : null;
+    String? previousTable; // Track previous value
+    String? previousRoom; // Track previous value
     bool isLoadingTables = true;
     bool isLoadingChairs = false;
     bool isLoadingRooms = true;
+    final isAddingToExisting = cart.existingItemsCount > 0;
 
     showDialog(
       context: context,
@@ -390,9 +395,51 @@ class _WaiterDashboardState extends State<WaiterDashboard> {
                   child: Column(
                     mainAxisSize: MainAxisSize.min,
                     children: [
-                      const Text(
-                        'Please provide the following details to complete the order:',
-                        style: TextStyle(fontSize: 14),
+                      // Banner for adding to existing order
+                      if (isAddingToExisting) ...[
+                        Container(
+                          padding: const EdgeInsets.all(12),
+                          decoration: BoxDecoration(
+                            color: Colors.green.shade50,
+                            borderRadius: BorderRadius.circular(12),
+                            border: Border.all(color: Colors.green.shade300, width: 2),
+                          ),
+                          child: Row(
+                            children: [
+                              Icon(Icons.add_circle_outline, color: Colors.green.shade700, size: 24),
+                              const SizedBox(width: 8),
+                              Expanded(
+                                child: Column(
+                                  crossAxisAlignment: CrossAxisAlignment.start,
+                                  children: [
+                                    Text(
+                                      'Adding to Existing Order',
+                                      style: TextStyle(
+                                        fontSize: 14,
+                                        fontWeight: FontWeight.bold,
+                                        color: Colors.green.shade800,
+                                      ),
+                                    ),
+                                    Text(
+                                      '${cart.existingItemsCount} existing items in cart',
+                                      style: TextStyle(
+                                        fontSize: 12,
+                                        color: Colors.green.shade700,
+                                      ),
+                                    ),
+                                  ],
+                                ),
+                              ),
+                            ],
+                          ),
+                        ),
+                        const SizedBox(height: 16),
+                      ],
+                      Text(
+                        isAddingToExisting 
+                          ? 'Only new items will be sent to kitchen:'
+                          : 'Please provide the following details to complete the order:',
+                        style: const TextStyle(fontSize: 14),
                       ),
                       const SizedBox(height: 20),
                       // Service Type Display
@@ -477,7 +524,33 @@ class _WaiterDashboardState extends State<WaiterDashboard> {
                                     ],
                                   ),
                                 )
-                              : DropdownButtonFormField<String>(
+                              : isAddingToExisting
+                                  // Show disabled field with existing room when adding to existing order
+                                  ? Container(
+                                      padding: const EdgeInsets.all(16),
+                                      decoration: BoxDecoration(
+                                        color: Colors.grey.shade100,
+                                        borderRadius: BorderRadius.circular(12),
+                                        border: Border.all(color: Colors.grey.shade300),
+                                      ),
+                                      child: Row(
+                                        children: [
+                                          Icon(Icons.bed, color: Colors.grey.shade600, size: 18),
+                                          const SizedBox(width: 8),
+                                          Text(
+                                            'Room: $selectedRoom (Locked)',
+                                            style: TextStyle(
+                                              fontSize: 14,
+                                              color: Colors.grey.shade700,
+                                              fontWeight: FontWeight.w600,
+                                            ),
+                                          ),
+                                          const Spacer(),
+                                          Icon(Icons.lock, color: Colors.grey.shade500, size: 16),
+                                        ],
+                                      ),
+                                    )
+                                  : DropdownButtonFormField<String>(
                                   value: selectedRoom,
                                   decoration: InputDecoration(
                                     labelText: 'Room *',
@@ -498,16 +571,159 @@ class _WaiterDashboardState extends State<WaiterDashboard> {
                                     style: TextStyle(fontSize: 14),
                                   ),
                                   items: rooms.map((room) {
+                                    final bool isOccupied =
+                                        room['isOccupied'] == true;
+                                    final String displayText =
+                                        '${room['RoomCode']} - ${room['RoomName']}${isOccupied ? ' (OCCUPIED)' : ''}';
                                     return DropdownMenuItem<String>(
                                       value: room['RoomCode'],
                                       child: Text(
-                                        '${room['RoomCode']} - ${room['RoomName']}',
-                                        style: const TextStyle(fontSize: 14),
+                                        displayText,
+                                        style: TextStyle(
+                                          fontSize: 14,
+                                          color: isOccupied
+                                              ? Colors.red.shade400
+                                              : Colors.black,
+                                          fontWeight: isOccupied
+                                              ? FontWeight.bold
+                                              : FontWeight.normal,
+                                        ),
+                                        overflow: TextOverflow.ellipsis,
                                       ),
                                     );
                                   }).toList(),
                                   onChanged: (String? newValue) {
+                                    if (newValue == null) return;
+
+                                    // Check if selected room is occupied
+                                    final selectedRoomData = rooms.firstWhere(
+                                      (room) => room['RoomCode'] == newValue,
+                                      orElse: () => {},
+                                    );
+
+                                    if (selectedRoomData.isNotEmpty &&
+                                        selectedRoomData['isOccupied'] ==
+                                            true) {
+                                      // Show warning dialog - DO NOT update selection
+                                      showDialog(
+                                        context: context,
+                                        builder: (dialogContext) => AlertDialog(
+                                          shape: RoundedRectangleBorder(
+                                            borderRadius: BorderRadius.circular(
+                                              20,
+                                            ),
+                                          ),
+                                          title: Row(
+                                            children: [
+                                              Icon(
+                                                Icons.block_rounded,
+                                                color: Colors.red.shade700,
+                                                size: 32,
+                                              ),
+                                              const SizedBox(width: 12),
+                                              const Expanded(
+                                                child: Text(
+                                                  'Room Occupied!',
+                                                  style: TextStyle(
+                                                    fontSize: 20,
+                                                    fontWeight: FontWeight.bold,
+                                                  ),
+                                                ),
+                                              ),
+                                            ],
+                                          ),
+                                          content: Column(
+                                            mainAxisSize: MainAxisSize.min,
+                                            crossAxisAlignment:
+                                                CrossAxisAlignment.start,
+                                            children: [
+                                              Text(
+                                                'Room ${selectedRoomData['RoomCode']} - ${selectedRoomData['RoomName']} has an unpaid order.',
+                                                style: const TextStyle(
+                                                  fontSize: 16,
+                                                  fontWeight: FontWeight.w600,
+                                                ),
+                                              ),
+                                              const SizedBox(height: 12),
+                                              Container(
+                                                padding: const EdgeInsets.all(
+                                                  12,
+                                                ),
+                                                decoration: BoxDecoration(
+                                                  color: Colors.orange.shade50,
+                                                  borderRadius:
+                                                      BorderRadius.circular(8),
+                                                  border: Border.all(
+                                                    color:
+                                                        Colors.orange.shade200,
+                                                  ),
+                                                ),
+                                                child: Row(
+                                                  children: [
+                                                    Icon(
+                                                      Icons.info_outline,
+                                                      color: Colors
+                                                          .orange
+                                                          .shade700,
+                                                      size: 20,
+                                                    ),
+                                                    const SizedBox(width: 8),
+                                                    const Expanded(
+                                                      child: Text(
+                                                        'Please select a different room or complete the existing order first.',
+                                                        style: TextStyle(
+                                                          fontSize: 14,
+                                                        ),
+                                                      ),
+                                                    ),
+                                                  ],
+                                                ),
+                                              ),
+                                            ],
+                                          ),
+                                          actions: [
+                                            ElevatedButton(
+                                              onPressed: () => Navigator.of(
+                                                dialogContext,
+                                              ).pop(),
+                                              style: ElevatedButton.styleFrom(
+                                                backgroundColor:
+                                                    theme.colorScheme.primary,
+                                                foregroundColor: Colors.white,
+                                                padding:
+                                                    const EdgeInsets.symmetric(
+                                                      horizontal: 24,
+                                                      vertical: 12,
+                                                    ),
+                                                shape: RoundedRectangleBorder(
+                                                  borderRadius:
+                                                      BorderRadius.circular(12),
+                                                ),
+                                              ),
+                                              child: const Text(
+                                                'OK, I\'ll Choose Another',
+                                              ),
+                                            ),
+                                          ],
+                                        ),
+                                      );
+                                      // Reset to previous value after dialog closes
+                                      Future.delayed(
+                                        const Duration(milliseconds: 100),
+                                        () {
+                                          setState(() {
+                                            selectedRoom =
+                                                previousRoom; // Restore previous value
+                                          });
+                                        },
+                                      );
+                                      return;
+                                    }
+
+                                    // Room is available, update selection
                                     setState(() {
+                                      previousRoom =
+                                          selectedRoom; // Save current value before updating
                                       selectedRoom = newValue;
                                     });
                                   },
@@ -537,7 +753,33 @@ class _WaiterDashboardState extends State<WaiterDashboard> {
                                     ],
                                   ),
                                 )
-                              : DropdownButtonFormField<String>(
+                              : isAddingToExisting
+                                  // Show disabled field with existing table when adding to existing order
+                                  ? Container(
+                                      padding: const EdgeInsets.all(16),
+                                      decoration: BoxDecoration(
+                                        color: Colors.grey.shade100,
+                                        borderRadius: BorderRadius.circular(12),
+                                        border: Border.all(color: Colors.grey.shade300),
+                                      ),
+                                      child: Row(
+                                        children: [
+                                          Icon(Icons.table_restaurant, color: Colors.grey.shade600, size: 18),
+                                          const SizedBox(width: 8),
+                                          Text(
+                                            'Table: $selectedTable (Locked)',
+                                            style: TextStyle(
+                                              fontSize: 14,
+                                              color: Colors.grey.shade700,
+                                              fontWeight: FontWeight.w600,
+                                            ),
+                                          ),
+                                          const Spacer(),
+                                          Icon(Icons.lock, color: Colors.grey.shade500, size: 16),
+                                        ],
+                                      ),
+                                    )
+                                  : DropdownButtonFormField<String>(
                                   value: selectedTable,
                                   decoration: InputDecoration(
                                     labelText: 'Table *',
@@ -558,16 +800,159 @@ class _WaiterDashboardState extends State<WaiterDashboard> {
                                     style: TextStyle(fontSize: 14),
                                   ),
                                   items: tables.map((table) {
+                                    final bool isOccupied =
+                                        table['isOccupied'] == true;
+                                    final String displayText =
+                                        '${table['TableCode']} - ${table['TableName']}${isOccupied ? ' (OCCUPIED)' : ''}';
                                     return DropdownMenuItem<String>(
                                       value: table['TableCode'],
                                       child: Text(
-                                        '${table['TableCode']} - ${table['TableName']}',
-                                        style: const TextStyle(fontSize: 14),
+                                        displayText,
+                                        style: TextStyle(
+                                          fontSize: 14,
+                                          color: isOccupied
+                                              ? Colors.red.shade400
+                                              : Colors.black,
+                                          fontWeight: isOccupied
+                                              ? FontWeight.bold
+                                              : FontWeight.normal,
+                                        ),
+                                        overflow: TextOverflow.ellipsis,
                                       ),
                                     );
                                   }).toList(),
                                   onChanged: (String? newValue) {
+                                    if (newValue == null) return;
+
+                                    // Check if selected table is occupied
+                                    final selectedTableData = tables.firstWhere(
+                                      (table) => table['TableCode'] == newValue,
+                                      orElse: () => {},
+                                    );
+
+                                    if (selectedTableData.isNotEmpty &&
+                                        selectedTableData['isOccupied'] ==
+                                            true) {
+                                      // Show warning dialog - DO NOT update selection
+                                      showDialog(
+                                        context: context,
+                                        builder: (dialogContext) => AlertDialog(
+                                          shape: RoundedRectangleBorder(
+                                            borderRadius: BorderRadius.circular(
+                                              20,
+                                            ),
+                                          ),
+                                          title: Row(
+                                            children: [
+                                              Icon(
+                                                Icons.block_rounded,
+                                                color: Colors.red.shade700,
+                                                size: 32,
+                                              ),
+                                              const SizedBox(width: 12),
+                                              const Expanded(
+                                                child: Text(
+                                                  'Table Occupied!',
+                                                  style: TextStyle(
+                                                    fontSize: 20,
+                                                    fontWeight: FontWeight.bold,
+                                                  ),
+                                                ),
+                                              ),
+                                            ],
+                                          ),
+                                          content: Column(
+                                            mainAxisSize: MainAxisSize.min,
+                                            crossAxisAlignment:
+                                                CrossAxisAlignment.start,
+                                            children: [
+                                              Text(
+                                                'Table ${selectedTableData['TableCode']} - ${selectedTableData['TableName']} has an unpaid order.',
+                                                style: const TextStyle(
+                                                  fontSize: 16,
+                                                  fontWeight: FontWeight.w600,
+                                                ),
+                                              ),
+                                              const SizedBox(height: 12),
+                                              Container(
+                                                padding: const EdgeInsets.all(
+                                                  12,
+                                                ),
+                                                decoration: BoxDecoration(
+                                                  color: Colors.orange.shade50,
+                                                  borderRadius:
+                                                      BorderRadius.circular(8),
+                                                  border: Border.all(
+                                                    color:
+                                                        Colors.orange.shade200,
+                                                  ),
+                                                ),
+                                                child: Row(
+                                                  children: [
+                                                    Icon(
+                                                      Icons.info_outline,
+                                                      color: Colors
+                                                          .orange
+                                                          .shade700,
+                                                      size: 20,
+                                                    ),
+                                                    const SizedBox(width: 8),
+                                                    const Expanded(
+                                                      child: Text(
+                                                        'Please select a different table or complete the existing order first.',
+                                                        style: TextStyle(
+                                                          fontSize: 14,
+                                                        ),
+                                                      ),
+                                                    ),
+                                                  ],
+                                                ),
+                                              ),
+                                            ],
+                                          ),
+                                          actions: [
+                                            ElevatedButton(
+                                              onPressed: () => Navigator.of(
+                                                dialogContext,
+                                              ).pop(),
+                                              style: ElevatedButton.styleFrom(
+                                                backgroundColor:
+                                                    theme.colorScheme.primary,
+                                                foregroundColor: Colors.white,
+                                                padding:
+                                                    const EdgeInsets.symmetric(
+                                                      horizontal: 24,
+                                                      vertical: 12,
+                                                    ),
+                                                shape: RoundedRectangleBorder(
+                                                  borderRadius:
+                                                      BorderRadius.circular(12),
+                                                ),
+                                              ),
+                                              child: const Text(
+                                                'OK, I\'ll Choose Another',
+                                              ),
+                                            ),
+                                          ],
+                                        ),
+                                      );
+                                      // Reset to previous value after dialog closes
+                                      Future.delayed(
+                                        const Duration(milliseconds: 100),
+                                        () {
+                                          setState(() {
+                                            selectedTable =
+                                                previousTable; // Restore previous value
+                                          });
+                                        },
+                                      );
+                                      return;
+                                    }
+
+                                    // Table is available, update selection
                                     setState(() {
+                                      previousTable =
+                                          selectedTable; // Save current value before updating
                                       selectedTable = newValue;
                                       selectedChair =
                                           null; // Reset chair selection when table changes
@@ -743,6 +1128,37 @@ class _WaiterDashboardState extends State<WaiterDashboard> {
                       );
                       return;
                     }
+
+                    // Check if selected room is occupied
+                    final selectedRoomData = rooms.firstWhere(
+                      (room) => room['RoomCode'] == selectedRoom,
+                      orElse: () => {},
+                    );
+                    if (selectedRoomData.isNotEmpty &&
+                        selectedRoomData['isOccupied'] == true) {
+                      ScaffoldMessenger.of(context).showSnackBar(
+                        SnackBar(
+                          content: Row(
+                            children: [
+                              Icon(Icons.block_rounded, color: Colors.white),
+                              const SizedBox(width: 8),
+                              Expanded(
+                                child: Text(
+                                  'Room ${selectedRoomData['RoomCode']} is occupied with an unpaid order! Please select a different room.',
+                                ),
+                              ),
+                            ],
+                          ),
+                          backgroundColor: Colors.red.shade700,
+                          duration: const Duration(seconds: 4),
+                          behavior: SnackBarBehavior.floating,
+                          shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(8),
+                          ),
+                        ),
+                      );
+                      return;
+                    }
                   } else {
                     // Validate table and chair selection for dine-in/takeaway
                     if (selectedTable == null) {
@@ -750,6 +1166,37 @@ class _WaiterDashboardState extends State<WaiterDashboard> {
                         const SnackBar(
                           content: Text('Please select a table'),
                           backgroundColor: Colors.red,
+                        ),
+                      );
+                      return;
+                    }
+
+                    // Check if selected table is occupied
+                    final selectedTableData = tables.firstWhere(
+                      (table) => table['TableCode'] == selectedTable,
+                      orElse: () => {},
+                    );
+                    if (selectedTableData.isNotEmpty &&
+                        selectedTableData['isOccupied'] == true) {
+                      ScaffoldMessenger.of(context).showSnackBar(
+                        SnackBar(
+                          content: Row(
+                            children: [
+                              Icon(Icons.block_rounded, color: Colors.white),
+                              const SizedBox(width: 8),
+                              Expanded(
+                                child: Text(
+                                  'Table ${selectedTableData['TableCode']} is occupied with an unpaid order! Please select a different table.',
+                                ),
+                              ),
+                            ],
+                          ),
+                          backgroundColor: Colors.red.shade700,
+                          duration: const Duration(seconds: 4),
+                          behavior: SnackBarBehavior.floating,
+                          shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(8),
+                          ),
                         ),
                       );
                       return;
@@ -768,8 +1215,12 @@ class _WaiterDashboardState extends State<WaiterDashboard> {
 
                   Navigator.of(context).pop();
 
-                  // Capture cart items and other data before clearing
-                  final cartItems = List.from(cart.items);
+                  // Capture only NEW items (skip existing items)
+                  final cartItems = cart.existingItemsCount > 0 
+                      ? List.from(cart.newItems) // Only new items
+                      : List.from(cart.items); // All items if new order
+                  final isAddingToExisting = cart.existingItemsCount > 0;
+                  final existingItemsCount = cart.existingItemsCount;
                   final tableNumber = cart.serviceType?.name == 'roomService'
                       ? null
                       : selectedTable!;
@@ -782,25 +1233,32 @@ class _WaiterDashboardState extends State<WaiterDashboard> {
                   final serviceType = cart.serviceType;
                   final customerName = cart.customerName;
 
-                  // Generate receipt number from sysconfig (without timestamp fallback)
-                  String receiptNumber = '10000001'; // Default fallback
-                  try {
-                    print('🔄 Calling generateReceiptNumber API...');
-                    final receiptResult = await ApiService.generateReceiptNumber('temp');
-                    print('📊 Receipt API response: $receiptResult');
-                    
-                    if (receiptResult['success'] == true &&
-                        receiptResult['receiptNo'] != null) {
-                      receiptNumber = receiptResult['receiptNo'];
-                      print('✅ Generated receipt number: $receiptNumber');
-                    } else {
-                      print('⚠️ API returned success=false or null receiptNo');
-                      print('⚠️ Full response: $receiptResult');
+                  // Use existing receipt number if adding to an existing order
+                  String receiptNumber = '100000001'; // Default fallback
+                  if (cart.existingReceiptNo != null && cart.existingReceiptNo!.isNotEmpty) {
+                    receiptNumber = cart.existingReceiptNo!;
+                    print('🔄 Using existing receipt number for adding items: $receiptNumber');
+                  } else {
+                    // Generate new receipt number from sysconfig (without timestamp fallback)
+                    try {
+                      print('🔄 Calling generateReceiptNumber API...');
+                      final receiptResult =
+                          await ApiService.generateReceiptNumber('temp');
+                      print('📊 Receipt API response: $receiptResult');
+
+                      if (receiptResult['success'] == true &&
+                          receiptResult['receiptNo'] != null) {
+                        receiptNumber = receiptResult['receiptNo'];
+                        print('✅ Generated receipt number: $receiptNumber');
+                      } else {
+                        print('⚠️ API returned success=false or null receiptNo');
+                        print('⚠️ Full response: $receiptResult');
+                      }
+                    } catch (e) {
+                      print('❌ Error generating receipt number: $e');
+                      print('❌ Error details: ${e.toString()}');
+                      // Keep default fallback receipt number
                     }
-                  } catch (e) {
-                    print('❌ Error generating receipt number: $e');
-                    print('❌ Error details: ${e.toString()}');
-                    // Keep default fallback receipt number
                   }
 
                   // Clear the cart immediately
@@ -828,8 +1286,11 @@ class _WaiterDashboardState extends State<WaiterDashboard> {
                       content: Column(
                         mainAxisSize: MainAxisSize.min,
                         children: [
-                          const Text(
-                            'Your order has been sent to the kitchen successfully.',
+                          Text(
+                            isAddingToExisting 
+                              ? '$existingItemsCount existing items + ${cartItems.length} new items sent to kitchen!'
+                              : 'Your order has been sent to the kitchen successfully.',
+                            textAlign: TextAlign.center,
                           ),
                           const SizedBox(height: 12),
                           Text(
@@ -916,11 +1377,12 @@ class _WaiterDashboardState extends State<WaiterDashboard> {
     String receiptNumber,
   ) async {
     print('🔄 Starting background order processing...');
-    print('📋 Cart items count: ${cartItems.length}');
+    print('📋 Cart items to send (NEW ITEMS ONLY): ${cartItems.length}');
     print('🏷️ Table: $tableNumber');
     print('🪑 Chair: $chairNumber');
     print('🏨 Room: $roomNumber');
     print('👤 Customer: $customerName');
+    print('🧾 Receipt Number: $receiptNumber');
 
     if (cartItems.isEmpty) {
       print('❌ No cart items to process!');
