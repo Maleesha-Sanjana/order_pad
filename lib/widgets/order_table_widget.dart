@@ -208,23 +208,47 @@ class OrderTableWidget extends StatelessWidget {
       itemCount: cart.items.length,
       itemBuilder: (context, index) {
         final item = cart.items[index];
+        final isExisting =
+            item.isExisting; // Check if this is an existing order
+
         return Container(
           padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
           decoration: BoxDecoration(
+            // Different background for existing items
+            color: isExisting
+                ? theme.colorScheme.surfaceVariant.withOpacity(0.3)
+                : null,
             border: Border(
               top: BorderSide(
                 color: theme.colorScheme.outline.withOpacity(0.1),
               ),
+              left: isExisting
+                  ? BorderSide(color: Colors.blue, width: 3)
+                  : BorderSide.none,
             ),
           ),
           child: Row(
             children: [
               Expanded(
                 flex: 1,
-                child: Text(
-                  '${index + 1}',
-                  textAlign: TextAlign.center,
-                  style: const TextStyle(fontSize: 11),
+                child: Row(
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  children: [
+                    if (isExisting)
+                      Icon(Icons.lock_outline, size: 12, color: Colors.blue),
+                    if (isExisting) const SizedBox(width: 4),
+                    Text(
+                      '${index + 1}',
+                      textAlign: TextAlign.center,
+                      style: TextStyle(
+                        fontSize: 11,
+                        color: isExisting ? Colors.blue : null,
+                        fontWeight: isExisting
+                            ? FontWeight.bold
+                            : FontWeight.normal,
+                      ),
+                    ),
+                  ],
                 ),
               ),
               Expanded(
@@ -232,7 +256,13 @@ class OrderTableWidget extends StatelessWidget {
                 child: Text(
                   item.foodItem.name,
                   textAlign: TextAlign.left,
-                  style: const TextStyle(fontSize: 11),
+                  style: TextStyle(
+                    fontSize: 11,
+                    color: isExisting ? Colors.blue.shade700 : null,
+                    fontWeight: isExisting
+                        ? FontWeight.w600
+                        : FontWeight.normal,
+                  ),
                 ),
               ),
               Expanded(
@@ -240,7 +270,10 @@ class OrderTableWidget extends StatelessWidget {
                 child: Text(
                   '${item.foodItem.price.toStringAsFixed(0)}',
                   textAlign: TextAlign.right,
-                  style: const TextStyle(fontSize: 11),
+                  style: TextStyle(
+                    fontSize: 11,
+                    color: isExisting ? Colors.blue : null,
+                  ),
                 ),
               ),
               Expanded(
@@ -248,7 +281,10 @@ class OrderTableWidget extends StatelessWidget {
                 child: Text(
                   '${item.quantity}',
                   textAlign: TextAlign.center,
-                  style: const TextStyle(fontSize: 11),
+                  style: TextStyle(
+                    fontSize: 11,
+                    color: isExisting ? Colors.blue : null,
+                  ),
                 ),
               ),
               Expanded(
@@ -256,15 +292,21 @@ class OrderTableWidget extends StatelessWidget {
                 child: Text(
                   '0%',
                   textAlign: TextAlign.center,
-                  style: const TextStyle(fontSize: 11),
+                  style: TextStyle(
+                    fontSize: 11,
+                    color: isExisting ? Colors.blue : null,
+                  ),
                 ),
               ),
               Expanded(
                 flex: 1,
                 child: Text(
-                  '${cart.serviceCharge.toStringAsFixed(0)}',
+                  '${(item.totalPrice * 0.10).toStringAsFixed(0)}',
                   textAlign: TextAlign.right,
-                  style: const TextStyle(fontSize: 11),
+                  style: TextStyle(
+                    fontSize: 11,
+                    color: isExisting ? Colors.blue : null,
+                  ),
                 ),
               ),
               Expanded(
@@ -272,28 +314,35 @@ class OrderTableWidget extends StatelessWidget {
                 child: Text(
                   '${item.totalPrice.toStringAsFixed(0)}',
                   textAlign: TextAlign.right,
-                  style: const TextStyle(fontSize: 11),
+                  style: TextStyle(
+                    fontSize: 11,
+                    color: isExisting ? Colors.blue : null,
+                  ),
                 ),
               ),
               Expanded(
                 flex: 1,
-                child: IconButton(
-                  onPressed: () {
-                    cart.removeItemByIndex(index);
-                  },
-                  icon: Icon(
-                    Icons.delete_outline_rounded,
-                    color: theme.colorScheme.error,
-                    size: 20,
-                  ),
-                  style: IconButton.styleFrom(
-                    backgroundColor: theme.colorScheme.error.withOpacity(0.1),
-                    shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(8),
-                    ),
-                    padding: const EdgeInsets.all(8),
-                  ),
-                ),
+                child: isExisting
+                    ? Icon(Icons.check_circle, color: Colors.blue, size: 20)
+                    : IconButton(
+                        onPressed: () {
+                          cart.removeItemByIndex(index);
+                        },
+                        icon: Icon(
+                          Icons.delete_outline_rounded,
+                          color: theme.colorScheme.error,
+                          size: 20,
+                        ),
+                        style: IconButton.styleFrom(
+                          backgroundColor: theme.colorScheme.error.withOpacity(
+                            0.1,
+                          ),
+                          shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(8),
+                          ),
+                          padding: const EdgeInsets.all(8),
+                        ),
+                      ),
               ),
             ],
           ),

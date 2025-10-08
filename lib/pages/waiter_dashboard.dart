@@ -1475,16 +1475,26 @@ class _WaiterDashboardState extends State<WaiterDashboard> {
       if (isAddingToExistingOrder) {
         // Adding to existing order - only save NEW items
         itemsToSave = cartProvider.newItems;
-        print('📊 NEW items to save (skip existing): ${itemsToSave.length}');
+        print('📊 EXISTING ORDER MODE:');
+        print('   - Total items in cart: ${cartItems.length}');
+        print('   - Existing items count: ${cartProvider.existingItemsCount}');
+        print('   - NEW items to save: ${itemsToSave.length}');
+        print('   - Existing ReceiptNo: ${cartProvider.existingReceiptNo}');
         
         if (itemsToSave.isEmpty) {
           print('⚠️ No new items to save - only existing items in cart');
           return;
         }
+        
+        // Debug: Show what we're about to save
+        for (int i = 0; i < itemsToSave.length; i++) {
+          print('   NEW Item ${i+1}: ${itemsToSave[i].foodItem.name} x${itemsToSave[i].quantity}');
+        }
       } else {
         // New order - save ALL items
         itemsToSave = cartItems.cast<CartItem>();
-        print('📊 ALL items to save (new order): ${itemsToSave.length}');
+        print('📊 NEW ORDER MODE:');
+        print('   - ALL items to save: ${itemsToSave.length}');
       }
       
       try {
@@ -1499,10 +1509,18 @@ class _WaiterDashboardState extends State<WaiterDashboard> {
             existingReceiptNo = existingItems.first.receiptNo;
           }
           
-          print('📋 Table has existing items with max ID: $maxId');
-          print('✅ Items will start from ID: $startingId');
+          print('📋 DATABASE CHECK:');
+          print('   - Existing items in database: ${existingItems.length}');
+          print('   - Max ID in database: $maxId');
+          print('   - NEW items will start from ID: $startingId');
           if (existingReceiptNo != null) {
-            print('🧾 Using existing ReceiptNo: $existingReceiptNo');
+            print('   - Using existing ReceiptNo: $existingReceiptNo');
+          }
+          
+          // Debug: Show existing items
+          print('   - Existing items in DB:');
+          for (var item in existingItems) {
+            print('     ID=${item.id}, Product=${item.productDescription}, Qty=${item.qty}');
           }
         } else {
           print('✅ New order - IDs will start from: 1');
