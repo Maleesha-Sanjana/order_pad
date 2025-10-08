@@ -5,6 +5,7 @@ import '../providers/cart_provider.dart';
 import '../providers/database_data_provider.dart';
 import '../providers/auth_provider.dart';
 import '../models/suspend_order.dart';
+import '../models/cart_item.dart';
 import '../services/api_service.dart';
 import '../widgets/header_widget.dart';
 import '../widgets/order_table_widget.dart';
@@ -300,13 +301,15 @@ class _WaiterDashboardState extends State<WaiterDashboard> {
     bool isLoadingTables = true;
     bool isLoadingChairs = false;
     bool isLoadingRooms = true;
-    final isAddingToExisting = cart.existingItemsCount > 0;
 
     showDialog(
       context: context,
       barrierDismissible: false,
       builder: (context) => StatefulBuilder(
         builder: (context, setState) {
+          // Check if adding to existing order (before using it)
+          final isAddingToExistingOrder = cart.existingItemsCount > 0;
+          
           // Load data based on service type
           if (cart.serviceType?.name == 'roomService') {
             // Load rooms for room service
@@ -396,7 +399,7 @@ class _WaiterDashboardState extends State<WaiterDashboard> {
                     mainAxisSize: MainAxisSize.min,
                     children: [
                       // Banner for adding to existing order
-                      if (isAddingToExisting) ...[
+                      if (isAddingToExistingOrder) ...[
                         Container(
                           padding: const EdgeInsets.all(12),
                           decoration: BoxDecoration(
@@ -436,7 +439,7 @@ class _WaiterDashboardState extends State<WaiterDashboard> {
                         const SizedBox(height: 16),
                       ],
                       Text(
-                        isAddingToExisting 
+                        isAddingToExistingOrder 
                           ? 'Only new items will be sent to kitchen:'
                           : 'Please provide the following details to complete the order:',
                         style: const TextStyle(fontSize: 14),
@@ -524,7 +527,7 @@ class _WaiterDashboardState extends State<WaiterDashboard> {
                                     ],
                                   ),
                                 )
-                              : isAddingToExisting
+                              : isAddingToExistingOrder
                                   // Show disabled field with existing room when adding to existing order
                                   ? Container(
                                       padding: const EdgeInsets.all(16),
@@ -753,7 +756,7 @@ class _WaiterDashboardState extends State<WaiterDashboard> {
                                     ],
                                   ),
                                 )
-                              : isAddingToExisting
+                              : isAddingToExistingOrder
                                   // Show disabled field with existing table when adding to existing order
                                   ? Container(
                                       padding: const EdgeInsets.all(16),
@@ -1128,36 +1131,38 @@ class _WaiterDashboardState extends State<WaiterDashboard> {
                       );
                       return;
                     }
-
-                    // Check if selected room is occupied
-                    final selectedRoomData = rooms.firstWhere(
-                      (room) => room['RoomCode'] == selectedRoom,
-                      orElse: () => {},
-                    );
-                    if (selectedRoomData.isNotEmpty &&
-                        selectedRoomData['isOccupied'] == true) {
-                      ScaffoldMessenger.of(context).showSnackBar(
-                        SnackBar(
-                          content: Row(
-                            children: [
-                              Icon(Icons.block_rounded, color: Colors.white),
-                              const SizedBox(width: 8),
-                              Expanded(
-                                child: Text(
-                                  'Room ${selectedRoomData['RoomCode']} is occupied with an unpaid order! Please select a different room.',
-                                ),
-                              ),
-                            ],
-                          ),
-                          backgroundColor: Colors.red.shade700,
-                          duration: const Duration(seconds: 4),
-                          behavior: SnackBarBehavior.floating,
-                          shape: RoundedRectangleBorder(
-                            borderRadius: BorderRadius.circular(8),
-                          ),
-                        ),
+                    
+                    // Only check if room is occupied when creating NEW order (not adding to existing)
+                    if (!isAddingToExistingOrder) {
+                      final selectedRoomData = rooms.firstWhere(
+                        (room) => room['RoomCode'] == selectedRoom,
+                        orElse: () => {},
                       );
-                      return;
+                      if (selectedRoomData.isNotEmpty &&
+                          selectedRoomData['isOccupied'] == true) {
+                        ScaffoldMessenger.of(context).showSnackBar(
+                          SnackBar(
+                            content: Row(
+                              children: [
+                                Icon(Icons.block_rounded, color: Colors.white),
+                                const SizedBox(width: 8),
+                                Expanded(
+                                  child: Text(
+                                    'Room ${selectedRoomData['RoomCode']} is occupied with an unpaid order! Please select a different room.',
+                                  ),
+                                ),
+                              ],
+                            ),
+                            backgroundColor: Colors.red.shade700,
+                            duration: const Duration(seconds: 4),
+                            behavior: SnackBarBehavior.floating,
+                            shape: RoundedRectangleBorder(
+                              borderRadius: BorderRadius.circular(8),
+                            ),
+                          ),
+                        );
+                        return;
+                      }
                     }
                   } else {
                     // Validate table and chair selection for dine-in/takeaway
@@ -1171,35 +1176,37 @@ class _WaiterDashboardState extends State<WaiterDashboard> {
                       return;
                     }
 
-                    // Check if selected table is occupied
-                    final selectedTableData = tables.firstWhere(
-                      (table) => table['TableCode'] == selectedTable,
-                      orElse: () => {},
-                    );
-                    if (selectedTableData.isNotEmpty &&
-                        selectedTableData['isOccupied'] == true) {
-                      ScaffoldMessenger.of(context).showSnackBar(
-                        SnackBar(
-                          content: Row(
-                            children: [
-                              Icon(Icons.block_rounded, color: Colors.white),
-                              const SizedBox(width: 8),
-                              Expanded(
-                                child: Text(
-                                  'Table ${selectedTableData['TableCode']} is occupied with an unpaid order! Please select a different table.',
-                                ),
-                              ),
-                            ],
-                          ),
-                          backgroundColor: Colors.red.shade700,
-                          duration: const Duration(seconds: 4),
-                          behavior: SnackBarBehavior.floating,
-                          shape: RoundedRectangleBorder(
-                            borderRadius: BorderRadius.circular(8),
-                          ),
-                        ),
+                    // Only check if table is occupied when creating NEW order (not adding to existing)
+                    if (!isAddingToExistingOrder) {
+                      final selectedTableData = tables.firstWhere(
+                        (table) => table['TableCode'] == selectedTable,
+                        orElse: () => {},
                       );
-                      return;
+                      if (selectedTableData.isNotEmpty &&
+                          selectedTableData['isOccupied'] == true) {
+                        ScaffoldMessenger.of(context).showSnackBar(
+                          SnackBar(
+                            content: Row(
+                              children: [
+                                Icon(Icons.block_rounded, color: Colors.white),
+                                const SizedBox(width: 8),
+                                Expanded(
+                                  child: Text(
+                                    'Table ${selectedTableData['TableCode']} is occupied with an unpaid order! Please select a different table.',
+                                  ),
+                                ),
+                              ],
+                            ),
+                            backgroundColor: Colors.red.shade700,
+                            duration: const Duration(seconds: 4),
+                            behavior: SnackBarBehavior.floating,
+                            shape: RoundedRectangleBorder(
+                              borderRadius: BorderRadius.circular(8),
+                            ),
+                          ),
+                        );
+                        return;
+                      }
                     }
 
                     if (selectedChair == null) {
@@ -1235,29 +1242,45 @@ class _WaiterDashboardState extends State<WaiterDashboard> {
 
                   // Use existing receipt number if adding to an existing order
                   String receiptNumber = '100000001'; // Default fallback
+                  String? unitPart;
+                  String? counterPart;
+                  
                   if (cart.existingReceiptNo != null && cart.existingReceiptNo!.isNotEmpty) {
                     receiptNumber = cart.existingReceiptNo!;
                     print('🔄 Using existing receipt number for adding items: $receiptNumber');
+                    print('📋 Existing items in cart: ${cart.existingItemsCount}');
+                    print('📋 Total items in cart: ${cart.items.length}');
+                    print('📋 NEW items to send: ${cartItems.length}');
+                    print('⚠️ Will NOT increment sysconfig.ReceiptNo (reusing existing receipt)');
                   } else {
-                    // Generate new receipt number from sysconfig (without timestamp fallback)
+                    // Generate new receipt number from sysconfig (combines Unit + ReceiptNo)
                     try {
                       print('🔄 Calling generateReceiptNumber API...');
                       final receiptResult =
                           await ApiService.generateReceiptNumber('temp');
                       print('📊 Receipt API response: $receiptResult');
+                      print('📊 Response type: ${receiptResult.runtimeType}');
+                      print('📊 Receipt No from API: ${receiptResult['receiptNo']}');
+                      print('📊 Unit from API: ${receiptResult['unit']}');
+                      print('📊 Counter from API: ${receiptResult['counter']}');
 
                       if (receiptResult['success'] == true &&
                           receiptResult['receiptNo'] != null) {
-                        receiptNumber = receiptResult['receiptNo'];
-                        print('✅ Generated receipt number: $receiptNumber');
+                        receiptNumber = receiptResult['receiptNo'].toString();
+                        unitPart = receiptResult['unit']?.toString();
+                        counterPart = receiptResult['counter']?.toString();
+                        print('✅ Using receipt number from API: $receiptNumber');
+                        print('✅ This combines sysconfig.Unit ($unitPart) + sysconfig.ReceiptNo ($counterPart)');
                       } else {
                         print('⚠️ API returned success=false or null receiptNo');
                         print('⚠️ Full response: $receiptResult');
+                        print('⚠️ Using default fallback: $receiptNumber');
                       }
                     } catch (e) {
                       print('❌ Error generating receipt number: $e');
+                      print('❌ Error type: ${e.runtimeType}');
                       print('❌ Error details: ${e.toString()}');
-                      // Keep default fallback receipt number
+                      print('❌ Using default fallback receipt number: $receiptNumber');
                     }
                   }
 
@@ -1293,9 +1316,46 @@ class _WaiterDashboardState extends State<WaiterDashboard> {
                             textAlign: TextAlign.center,
                           ),
                           const SizedBox(height: 12),
-                          Text(
-                            'Receipt Number: $receiptNumber',
-                            style: const TextStyle(fontWeight: FontWeight.w600),
+                          Container(
+                            padding: const EdgeInsets.all(12),
+                            decoration: BoxDecoration(
+                              color: theme.colorScheme.primary.withOpacity(0.1),
+                              borderRadius: BorderRadius.circular(8),
+                              border: Border.all(
+                                color: theme.colorScheme.primary.withOpacity(0.3),
+                              ),
+                            ),
+                            child: Column(
+                              children: [
+                                Text(
+                                  'Receipt Number',
+                                  style: TextStyle(
+                                    fontSize: 12,
+                                    color: theme.colorScheme.primary.withOpacity(0.7),
+                                  ),
+                                ),
+                                const SizedBox(height: 4),
+                                Text(
+                                  receiptNumber,
+                                  style: TextStyle(
+                                    fontSize: 24,
+                                    fontWeight: FontWeight.bold,
+                                    color: theme.colorScheme.primary,
+                                    letterSpacing: 2,
+                                  ),
+                                ),
+                                if (unitPart != null && counterPart != null) ...[
+                                  const SizedBox(height: 4),
+                                  Text(
+                                    'Unit: $unitPart | Counter: $counterPart',
+                                    style: TextStyle(
+                                      fontSize: 11,
+                                      color: theme.colorScheme.onSurface.withOpacity(0.6),
+                                    ),
+                                  ),
+                                ],
+                              ],
+                            ),
                           ),
                           if (tableNumber != null) ...[
                             Text(
@@ -1378,11 +1438,11 @@ class _WaiterDashboardState extends State<WaiterDashboard> {
   ) async {
     print('🔄 Starting background order processing...');
     print('📋 Cart items to send (NEW ITEMS ONLY): ${cartItems.length}');
-    print('🏷️ Table: $tableNumber');
+    print('🏷️ Table/Room: ${roomNumber ?? tableNumber}');
     print('🪑 Chair: $chairNumber');
-    print('🏨 Room: $roomNumber');
     print('👤 Customer: $customerName');
     print('🧾 Receipt Number: $receiptNumber');
+    print('🖨️ KotPrint Status: All ${cartItems.length} items will have KotPrint=1 (NEW ITEMS for kitchen)');
 
     if (cartItems.isEmpty) {
       print('❌ No cart items to process!');
@@ -1392,27 +1452,82 @@ class _WaiterDashboardState extends State<WaiterDashboard> {
     try {
       final databaseData = context.read<DatabaseDataProvider>();
       final authProvider = context.read<AuthProvider>();
+      final cartProvider = context.read<CartProvider>();
 
       print('👤 Salesman: ${authProvider.salesmanName}');
       print('🔑 Salesman Code: ${authProvider.salesmanCode}');
 
-      // Convert cart items to suspend orders and add to database
-      // Generate base ID from timestamp that fits in SQL INT
-      final baseId = (DateTime.now().millisecondsSinceEpoch ~/ 1000) % 1000000;
+      // Check if table has existing items and get max ID + receipt number
+      final tableOrRoom = roomNumber ?? tableNumber;
+      
+      // Check if this is adding to existing order or new order
+      final existingItemsCount = cartProvider.existingItemsCount;
+      final isAddingToExistingOrder = existingItemsCount > 0;
+      
+      print('📊 Total items in cart: ${cartItems.length}');
+      print('📊 Existing items count: $existingItemsCount');
+      print('📊 Is adding to existing order: $isAddingToExistingOrder');
+      
+      int startingId = 1;
+      String? existingReceiptNo = cartProvider.existingReceiptNo;
+      List<CartItem> itemsToSave;
+      
+      if (isAddingToExistingOrder) {
+        // Adding to existing order - only save NEW items
+        itemsToSave = cartProvider.newItems;
+        print('📊 NEW items to save (skip existing): ${itemsToSave.length}');
+        
+        if (itemsToSave.isEmpty) {
+          print('⚠️ No new items to save - only existing items in cart');
+          return;
+        }
+      } else {
+        // New order - save ALL items
+        itemsToSave = cartItems.cast<CartItem>();
+        print('📊 ALL items to save (new order): ${itemsToSave.length}');
+      }
+      
+      try {
+        final existingItems = await ApiService.getSuspendOrdersByTable(tableOrRoom);
+        if (existingItems.isNotEmpty) {
+          // Get max ID from database to continue sequence
+          final maxId = existingItems.map((item) => item.id ?? 0).reduce((a, b) => a > b ? a : b);
+          startingId = maxId + 1;
+          
+          // Get receipt number from existing items
+          if (existingReceiptNo == null && existingItems.first.receiptNo != null) {
+            existingReceiptNo = existingItems.first.receiptNo;
+          }
+          
+          print('📋 Table has existing items with max ID: $maxId');
+          print('✅ Items will start from ID: $startingId');
+          if (existingReceiptNo != null) {
+            print('🧾 Using existing ReceiptNo: $existingReceiptNo');
+          }
+        } else {
+          print('✅ New order - IDs will start from: 1');
+        }
+      } catch (e) {
+        print('⚠️ Could not fetch existing items: $e');
+      }
 
-      for (int i = 0; i < cartItems.length; i++) {
-        final cartItem = cartItems[i];
-        print('➕ Processing item ${i + 1}/${cartItems.length}:');
+      // Convert cart items to suspend orders and add to database
+      for (int i = 0; i < itemsToSave.length; i++) {
+        final cartItem = itemsToSave[i];
+        print('➕ Processing item ${i + 1}/${itemsToSave.length}:');
         print('   - Name: ${cartItem.foodItem.name}');
         print('   - ID: ${cartItem.foodItem.id}');
         print('   - Price: ${cartItem.foodItem.price}');
         print('   - Quantity: ${cartItem.quantity}');
         print('   - Total: ${cartItem.totalPrice}');
 
-        // Use UI table row # with unique base
-        final orderId = baseId + (i + 1);
-        print('🔢 Generated Order ID (UI table #${i + 1}): $orderId');
+        // Use sequential ID continuing from database max ID
+        final orderId = startingId + i;
+        print('🔢 Database ID: $orderId (KotPrint=1 for NEW items)');
 
+        // Determine batch number based on service type
+        final batchNumber = roomNumber != null ? 'RoomService' : 'DineIn';
+        
         final suspendOrder = SuspendOrder(
           id: orderId,
           productCode: cartItem.foodItem.id,
@@ -1424,6 +1539,8 @@ class _WaiterDashboardState extends State<WaiterDashboard> {
           wholeSalePrice: cartItem.foodItem.price * 0.85,
           qty: cartItem.quantity.toDouble(),
           amount: cartItem.totalPrice,
+          batchNo: batchNumber, // Set based on service type: RoomService or DineIn
+          receiptNo: existingReceiptNo, // Use existing receipt number if adding to table
           salesMan: authProvider.salesmanName.isNotEmpty
               ? authProvider.salesmanName
               : authProvider.salesmanCode,
@@ -1434,15 +1551,18 @@ class _WaiterDashboardState extends State<WaiterDashboard> {
               ? ''
               : chairNumber, // No chair for room service
           customer: customerName ?? 'Guest',
-          kotPrint: false,
+          kotPrint: true,
         );
 
         print('📦 Created SuspendOrder object:');
+        print('   - ID: ${suspendOrder.id}');
         print('   - ProductCode: ${suspendOrder.productCode}');
         print('   - ProductDescription: ${suspendOrder.productDescription}');
         print('   - UnitPrice: ${suspendOrder.unitPrice}');
         print('   - Qty: ${suspendOrder.qty}');
         print('   - Amount: ${suspendOrder.amount}');
+        print('   - BatchNo: ${suspendOrder.batchNo}');
+        print('   - ReceiptNo: ${suspendOrder.receiptNo ?? "NULL (will be assigned)"}');
         print('   - SalesMan: ${suspendOrder.salesMan}');
         print('   - Table/Room: ${suspendOrder.table}');
         print('   - Chair: ${suspendOrder.chair}');
@@ -1458,28 +1578,35 @@ class _WaiterDashboardState extends State<WaiterDashboard> {
         }
       }
 
-      // Confirm the order
-      print('🔄 Confirming order for table: $tableNumber');
-      print('📋 Using receipt number: $receiptNumber');
-      try {
-        final result = await databaseData.confirmOrder(
-          tableNumber,
-          receiptNo: receiptNumber,
-          salesMan: authProvider.salesmanName.isNotEmpty
-              ? authProvider.salesmanName
-              : authProvider.salesmanCode,
-        );
+      // Confirm the order (skip if already has ReceiptNo)
+      if (existingReceiptNo != null) {
+        print('✅ Order already has ReceiptNo: $existingReceiptNo');
+        print('✅ Skipping confirmation - just added items to existing receipt');
+      } else {
+        // Use room number for room service, table number for dine-in/takeaway
+        final tableOrRoom = roomNumber ?? tableNumber;
+        print('🔄 Confirming order for table/room: $tableOrRoom');
+        print('📋 Using receipt number: $receiptNumber');
+        try {
+          final result = await databaseData.confirmOrder(
+            tableOrRoom,
+            receiptNo: receiptNumber,
+            salesMan: authProvider.salesmanName.isNotEmpty
+                ? authProvider.salesmanName
+                : authProvider.salesmanCode,
+          );
 
-        print('📊 Confirm order result: $result');
-        if (result != null && result['success'] == true) {
-          print('✅ Background order processing completed successfully');
-          print('📄 Receipt: ${result['receiptNo']}');
-        } else {
-          print('❌ Background order confirmation failed - result: $result');
+          print('📊 Confirm order result: $result');
+          if (result != null && result['success'] == true) {
+            print('✅ Background order processing completed successfully');
+            print('📄 Receipt: ${result['receiptNo']}');
+          } else {
+            print('❌ Background order confirmation failed - result: $result');
+          }
+        } catch (confirmError) {
+          print('❌ Error confirming order: $confirmError');
+          print('❌ Confirm error details: ${confirmError.toString()}');
         }
-      } catch (confirmError) {
-        print('❌ Error confirming order: $confirmError');
-        print('❌ Confirm error details: ${confirmError.toString()}');
       }
     } catch (e, stackTrace) {
       print('❌ Error in background order processing: $e');

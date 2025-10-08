@@ -260,27 +260,64 @@ app.get('/api/suspend-orders/check-structure', async (req, res) => {
   }
 });
 
-// Get next available ID for inv_suspend
+// Get next available ID for inv_suspend (DEPRECATED - kept for reference)
+// NOTE: Frontend now uses simple sequential IDs (1, 2, 3...) for each receipt
+// Each receipt always starts with ID = 1, matching the UI row numbers
+// Uniqueness is maintained by: (Table, id) before confirmation, (ReceiptNo, id) after
 app.get('/api/suspend-orders/next-id', async (req, res) => {
   try {
     if (!pool) {
       return res.status(503).json({ error: 'Database not connected' });
     }
     
-    const result = await pool.request().query(`
-      SELECT ISNULL(MAX(id), 0) + 1 as nextId 
-      FROM inv_suspend
-    `);
+    const { tableNumber } = req.query;
     
-    const nextId = result.recordset[0].nextId;
+    if (!tableNumber) {
+      return res.status(400).json({ 
+        error: 'tableNumber query parameter is required',
+        message: 'Usage: /api/suspend-orders/next-id?tableNumber=T01'
+      });
+    }
+    
+    // DEPRECATED: This endpoint is no longer used by the frontend
+    // Frontend now uses simple 1, 2, 3... IDs that match UI row numbers
+    // Keeping this for backward compatibility or future use
+    const result = await pool.request()
+      .input('tableNumber', sql.NVarChar, tableNumber)
+      .query(`
+        WITH Numbers AS (
+          SELECT 1 AS num
+          UNION ALL
+          SELECT num + 1
+          FROM Numbers
+          WHERE num < 999
+        )
+        SELECT TOP 1 n.num as nextId
+        FROM Numbers n
+        LEFT JOIN inv_suspend s ON n.num = s.id AND s.[Table] = @tableNumber
+        WHERE s.id IS NULL
+        ORDER BY n.num
+        OPTION (MAXRECURSION 999)
+      `);
+    
+    let nextId;
+    if (result.recordset.length > 0) {
+      nextId = result.recordset[0].nextId;
+    } else {
+      console.warn(`⚠️ All IDs from 1-999 are occupied for table ${tableNumber}!`);
+      nextId = 1;
+    }
+    
+    console.log(`📋 Next available ID for table ${tableNumber}: ${nextId}`);
     res.json({ 
       success: true, 
       nextId: nextId,
-      message: `Next available ID: ${nextId}`
+      tableNumber: tableNumber,
+      message: `Next available ID for table ${tableNumber}: ${nextId}`
     });
   } catch (err) {
     console.error('Error getting next ID:', err);
-    res.status(500).json({ error: 'Failed to get next ID' });
+    res.status(500).json({ error: 'Failed to get next ID', details: err.message });
   }
 });
 
@@ -818,6 +855,41 @@ app.post('/api/suspend-orders', async (req, res) => {
     console.log(`📋 ReceiptNo for cart item: ${finalReceiptNo || 'NULL (will be assigned on order confirmation)'}`);
 
     
+    // Check if this ID already exists (might be updating existing item)
+    const existingCheck = await pool.request()
+      .input('checkId', sql.Int, id)
+      .query('SELECT id, KotPrint FROM inv_suspend WHERE id = @checkId');
+    
+    // KotPrint Logic:
+    // - New items (adding to cart): KotPrint = 1 (needs to be printed in kitchen)
+    // - Existing items (updating quantity): preserve existing KotPrint value
+    // - After kitchen prints KOT: manually set KotPrint = 0 in database
+    // - When adding NEW items to existing table: only NEW items have KotPrint = 1
+    let finalKotPrint = 1; // Default for new items - MUST be printed
+    
+    if (existingCheck.recordset.length > 0) {
+      // Item already exists - preserve its kotPrint value
+      // This prevents re-printing items that were already sent to kitchen (KotPrint = 0)
+      finalKotPrint = existingCheck.recordset[0].KotPrint;
+      console.log(`⚠️  Item with ID ${id} already exists. Preserving kotPrint = ${finalKotPrint}`);
+      
+      // Delete the old item and re-insert (to maintain consistent behavior)
+      await pool.request()
+        .input('deleteId', sql.Int, id)
+        .query('DELETE FROM inv_suspend WHERE id = @deleteId');
+      
+      console.log(`🔄 Re-inserting item ${id} with preserved kotPrint = ${finalKotPrint}`);
+    } else {
+      // New item - use provided value or default to 1
+      if (kotPrint !== undefined && kotPrint !== null) {
+        finalKotPrint = kotPrint ? 1 : 0;
+        console.log(`✅ New item ${id} - using provided kotPrint = ${finalKotPrint}`);
+      } else {
+        finalKotPrint = 1;
+        console.log(`✅ New item ${id} - defaulting to kotPrint = 1 (will be sent to kitchen for printing)`);
+      }
+    }
+    
     // Insert with the provided ID (no IDENTITY_INSERT needed - it's not an identity column)
     const result = await pool.request()
       .input('id', sql.Int, id)
@@ -837,7 +909,7 @@ app.post('/api/suspend-orders', async (req, res) => {
       .input('serialNo', sql.NVarChar, serialNo || '')
       .input('customer', sql.NVarChar, '....')
       .input('receiptNo', sql.NVarChar, finalReceiptNo)
-      .input('kotPrint', sql.Bit, 1)
+      .input('kotPrint', sql.Bit, finalKotPrint)
       .query(`
         INSERT INTO inv_suspend (
           id, ProductCode, ProductDescription, UnitPrice, Qty, Amount, SalesMan, [Table], Chair,
@@ -1025,8 +1097,8 @@ app.get('/api/orders/generate-receipt/:tableNumber', async (req, res) => {
     const { tableNumber } = req.params;
     console.log(`📋 Generating receipt number for table/room: ${tableNumber}`);
     
-    // Get both Unit and ReceiptNo from sysconfig
-    const sysconfigResult = await pool.request().query(`SELECT Unit, ReceiptNo FROM sysconfig`);
+    // Get both Unit and ReceiptNo from sysconfig (with NOLOCK to read latest value)
+    const sysconfigResult = await pool.request().query(`SELECT Unit, ReceiptNo FROM sysconfig WITH (NOLOCK)`);
     
     if (sysconfigResult.recordset.length === 0) {
       console.error('❌ Sysconfig not found in database');
@@ -1036,18 +1108,27 @@ app.get('/api/orders/generate-receipt/:tableNumber', async (req, res) => {
       });
     }
     
-    // Get unit from sysconfig (first number)
-    const unit = sysconfigResult.recordset[0].Unit?.toString() || '1';
-    console.log(`📋 Unit from sysconfig: ${unit}`);
+    // Get unit from sysconfig and convert to string
+    const unitValue = sysconfigResult.recordset[0].Unit;
+    const unit = unitValue !== null && unitValue !== undefined ? unitValue.toString() : '1';
+    console.log(`📋 Unit from sysconfig: ${unit} (raw value: ${unitValue}, type: ${typeof unitValue})`);
     
     // Get ReceiptNo counter from sysconfig
     const counter = parseInt(sysconfigResult.recordset[0].ReceiptNo) || 1;
     const receiptCounter = counter.toString().padStart(8, '0');
-    console.log(`📋 ReceiptNo from sysconfig: ${receiptCounter}`);
+    console.log(`📋 ReceiptNo from sysconfig: ${receiptCounter} (raw value: ${sysconfigResult.recordset[0].ReceiptNo})`);
     
     // Combine unit + receiptCounter (e.g., "1" + "00000001" = "100000001")
     const finalReceiptNo = unit + receiptCounter;
     console.log(`✅ Generated receipt number: ${finalReceiptNo}`);
+    
+    // Increment sysconfig counter for next order
+    const nextCounter = counter + 1;
+    await pool.request()
+      .input('newReceiptNo', sql.Int, nextCounter)
+      .query('UPDATE sysconfig SET ReceiptNo = @newReceiptNo');
+    
+    console.log(`✅ Incremented sysconfig ReceiptNo from ${counter} to ${nextCounter}`);
     
     res.json({ 
       success: true, 
@@ -1137,11 +1218,12 @@ app.post('/api/orders/confirm/:tableNumber', async (req, res) => {
     let finalReceiptNo = receiptNo;
     if (!finalReceiptNo) {
       try {
-        // Get both Unit and ReceiptNo from sysconfig
-        const sysconfigResult = await pool.request().query(`SELECT Unit, ReceiptNo FROM sysconfig`);
+        // Get both Unit and ReceiptNo from sysconfig (with NOLOCK to read latest value)
+        const sysconfigResult = await pool.request().query(`SELECT Unit, ReceiptNo FROM sysconfig WITH (NOLOCK)`);
         if (sysconfigResult.recordset.length > 0) {
-          // Get unit from sysconfig (first number)
-          const unit = sysconfigResult.recordset[0].Unit || '1';
+          // Get unit from sysconfig and convert to string
+          const unitValue = sysconfigResult.recordset[0].Unit;
+          const unit = unitValue !== null && unitValue !== undefined ? unitValue.toString() : '1';
           
           // Get counter from sysconfig
           const counter = parseInt(sysconfigResult.recordset[0].ReceiptNo) || 1;
@@ -1150,6 +1232,8 @@ app.post('/api/orders/confirm/:tableNumber', async (req, res) => {
           // Combine: unit + counter (e.g., "1" + "00000001" = "100000001")
           finalReceiptNo = unit + receiptCounter;
           console.log(`📋 Generated receipt number: ${finalReceiptNo} (unit: ${unit}, counter: ${receiptCounter})`);
+          console.log(`📊 sysconfig.Unit raw value: ${unitValue} (type: ${typeof unitValue})`);
+          console.log(`📊 sysconfig.ReceiptNo raw value: ${sysconfigResult.recordset[0].ReceiptNo}`);
           
           // Increment sysconfig counter for next order
           const nextCounter = counter + 1;
@@ -1168,13 +1252,14 @@ app.post('/api/orders/confirm/:tableNumber', async (req, res) => {
     }
     
     // Update suspend orders with receipt number and mark as confirmed
+    // Note: KotPrint is NOT updated here to preserve manual database changes
     await pool.request()
       .input('tableNumber', sql.NVarChar, tableNumber)
       .input('receiptNo', sql.NVarChar, finalReceiptNo)
       .input('salesMan', sql.NVarChar, salesMan)
       .query(`
         UPDATE inv_suspend 
-        SET ReceiptNo = @receiptNo, SalesMan = @salesMan, KotPrint = 1
+        SET ReceiptNo = @receiptNo, SalesMan = @salesMan
         WHERE [Table] = @tableNumber
       `);
     
