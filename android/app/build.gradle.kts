@@ -8,7 +8,7 @@ plugins {
 }
 
 android {
-    namespace = "com.maleesha.foodordering"
+    namespace = "com.example.food_ordering"
     compileSdk = flutter.compileSdkVersion
     ndkVersion = flutter.ndkVersion
 
@@ -41,12 +41,10 @@ flutter {
 }
 
 dependencies {
-    
-    implementation(platform("com.google.firebase:firebase-bom:34.3.0"))
-
-    implementation("com.google.firebase:firebase-auth")
-    implementation("com.google.firebase:firebase-firestore")
-
-
-    implementation("com.google.android.gms:play-services-auth")
+    // Firebase dependencies temporarily removed to fix build issues
+    // Uncomment these and enable google-services plugin when Firebase is needed
+    // implementation(platform("com.google.firebase:firebase-bom:34.3.0"))
+    // implementation("com.google.firebase:firebase-auth")
+    // implementation("com.google.firebase:firebase-firestore")
+    // implementation("com.google.android.gms:play-services-auth")
 }

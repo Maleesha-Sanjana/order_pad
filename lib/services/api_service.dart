@@ -9,7 +9,11 @@ import '../models/salesman.dart';
 import '../models/suspend_order.dart';
 
 class ApiService {
-  static const String baseUrl = 'http://localhost:3000/api';
+  // For Android emulator: use 10.0.2.2
+  // For physical device: use your Mac's IP address (192.168.1.11)
+  // For iOS simulator: use localhost
+  // Change this to your Mac's IP when running on physical device
+  static const String baseUrl = 'http://192.168.1.11:3000/api';
 
   // Helper method to handle HTTP responses
   static Map<String, dynamic> _handleResponse(http.Response response) {
@@ -300,6 +304,31 @@ class ApiService {
     } catch (e) {
       print('Error fetching suspend orders by table: $e');
       return [];
+    }
+  }
+
+  static Future<int> getNextSuspendOrderId(String tableNumber) async {
+    try {
+      print('🔄 API: Fetching next available suspend order ID for table: $tableNumber');
+      final response = await http.get(
+        Uri.parse('$baseUrl/suspend-orders/next-id?tableNumber=${Uri.encodeComponent(tableNumber)}'),
+      );
+      
+      print('📊 API: Next ID response status: ${response.statusCode}');
+      
+      if (response.statusCode == 200) {
+        final data = json.decode(response.body);
+        final nextId = data['nextId'] as int;
+        print('✅ API: Next available ID for table $tableNumber: $nextId');
+        return nextId;
+      } else {
+        print('❌ API: Failed to get next ID: ${response.statusCode}');
+        print('❌ API: Response body: ${response.body}');
+        throw Exception('Failed to get next suspend order ID: ${response.statusCode}');
+      }
+    } catch (e) {
+      print('❌ API: Error getting next ID: $e');
+      rethrow;
     }
   }
 
