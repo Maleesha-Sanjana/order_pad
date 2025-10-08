@@ -855,70 +855,64 @@ app.post('/api/suspend-orders', async (req, res) => {
     console.log(`📋 ReceiptNo for cart item: ${finalReceiptNo || 'NULL (will be assigned on order confirmation)'}`);
 
     
-    // Check if this ID already exists (might be updating existing item)
-    const existingCheck = await pool.request()
-      .input('checkId', sql.Int, id)
-      .query('SELECT id, KotPrint FROM inv_suspend WHERE id = @checkId');
+    // ALWAYS INSERT NEW ROWS - NEVER UPDATE
+    // Even if same product is ordered multiple times, each order gets its own row
+    // This preserves order history and allows tracking individual items separately
     
     // KotPrint Logic:
     // - New items (adding to cart): KotPrint = 1 (needs to be printed in kitchen)
-    // - Existing items (updating quantity): preserve existing KotPrint value
-    // - After kitchen prints KOT: manually set KotPrint = 0 in database
-    // - When adding NEW items to existing table: only NEW items have KotPrint = 1
+    // - Use provided kotPrint value or default to 1
     let finalKotPrint = 1; // Default for new items - MUST be printed
     
-    if (existingCheck.recordset.length > 0) {
-      // Item already exists - preserve its kotPrint value
-      // This prevents re-printing items that were already sent to kitchen (KotPrint = 0)
-      finalKotPrint = existingCheck.recordset[0].KotPrint;
-      console.log(`⚠️  Item with ID ${id} already exists. Preserving kotPrint = ${finalKotPrint}`);
-      
-      // Delete the old item and re-insert (to maintain consistent behavior)
-      await pool.request()
-        .input('deleteId', sql.Int, id)
-        .query('DELETE FROM inv_suspend WHERE id = @deleteId');
-      
-      console.log(`🔄 Re-inserting item ${id} with preserved kotPrint = ${finalKotPrint}`);
+    if (kotPrint !== undefined && kotPrint !== null) {
+      finalKotPrint = kotPrint ? 1 : 0;
+      console.log(`✅ New item ${id} for table ${table} - using provided kotPrint = ${finalKotPrint}`);
     } else {
-      // New item - use provided value or default to 1
-      if (kotPrint !== undefined && kotPrint !== null) {
-        finalKotPrint = kotPrint ? 1 : 0;
-        console.log(`✅ New item ${id} - using provided kotPrint = ${finalKotPrint}`);
-      } else {
-        finalKotPrint = 1;
-        console.log(`✅ New item ${id} - defaulting to kotPrint = 1 (will be sent to kitchen for printing)`);
-      }
+      finalKotPrint = 1;
+      console.log(`✅ New item ${id} for table ${table} - defaulting to kotPrint = 1 (will be sent to kitchen)`);
     }
     
-    // Insert with the provided ID (no IDENTITY_INSERT needed - it's not an identity column)
-    const result = await pool.request()
-      .input('id', sql.Int, id)
-      .input('productCode', sql.NVarChar, productCode)
-      .input('productDescription', sql.NVarChar, productDescription)
-      .input('unitPrice', sql.Decimal(18, 2), unitPrice)
-      .input('qty', sql.Decimal(18, 2), qty)
-      .input('amount', sql.Decimal(18, 2), amount)
-      .input('salesMan', sql.NVarChar, salesMan)
-      .input('table', sql.NVarChar, table)
-      .input('chair', sql.NVarChar, chair || null)
-      .input('freeQty', sql.Decimal(18, 2), freeQty || 0)
-      .input('discPer', sql.Decimal(18, 2), discPer || 0)
-      .input('discAmount', sql.Decimal(18, 2), discAmount || 0)
-      .input('locaCode', sql.NVarChar, finalLocaCode)
-      .input('batchNo', sql.NVarChar, finalBatchNo)
-      .input('serialNo', sql.NVarChar, serialNo || '')
-      .input('customer', sql.NVarChar, '....')
-      .input('receiptNo', sql.NVarChar, finalReceiptNo)
-      .input('kotPrint', sql.Bit, finalKotPrint)
-      .query(`
-        INSERT INTO inv_suspend (
-          id, ProductCode, ProductDescription, UnitPrice, Qty, Amount, SalesMan, [Table], Chair,
-          FreeQty, DiscPer, DiscAmount, LocaCode, BatchNo, SerialNo, Customer, ReceiptNo, KotPrint
-        ) VALUES (
-          @id, @productCode, @productDescription, @unitPrice, @qty, @amount, @salesMan, @table, @chair,
-          @freeQty, @discPer, @discAmount, @locaCode, @batchNo, @serialNo, @customer, @receiptNo, @kotPrint
-        )
-      `);
+    // ALWAYS INSERT - Each order is a new row
+    // Frontend is responsible for providing unique IDs
+    try {
+      await pool.request()
+        .input('id', sql.Int, id)
+        .input('productCode', sql.NVarChar, productCode)
+        .input('productDescription', sql.NVarChar, productDescription)
+        .input('unitPrice', sql.Decimal(18, 2), unitPrice)
+        .input('qty', sql.Decimal(18, 2), qty)
+        .input('amount', sql.Decimal(18, 2), amount)
+        .input('salesMan', sql.NVarChar, salesMan)
+        .input('table', sql.NVarChar, table)
+        .input('chair', sql.NVarChar, chair || null)
+        .input('freeQty', sql.Decimal(18, 2), freeQty || 0)
+        .input('discPer', sql.Decimal(18, 2), discPer || 0)
+        .input('discAmount', sql.Decimal(18, 2), discAmount || 0)
+        .input('locaCode', sql.NVarChar, finalLocaCode)
+        .input('batchNo', sql.NVarChar, finalBatchNo)
+        .input('serialNo', sql.NVarChar, serialNo || '')
+        .input('customer', sql.NVarChar, '....')
+        .input('receiptNo', sql.NVarChar, finalReceiptNo)
+        .input('kotPrint', sql.Bit, finalKotPrint)
+        .query(`
+          INSERT INTO inv_suspend (
+            id, ProductCode, ProductDescription, UnitPrice, Qty, Amount, SalesMan, [Table], Chair,
+            FreeQty, DiscPer, DiscAmount, LocaCode, BatchNo, SerialNo, Customer, ReceiptNo, KotPrint
+          ) VALUES (
+            @id, @productCode, @productDescription, @unitPrice, @qty, @amount, @salesMan, @table, @chair,
+            @freeQty, @discPer, @discAmount, @locaCode, @batchNo, @serialNo, @customer, @receiptNo, @kotPrint
+          )
+        `);
+      
+      console.log(`✅ Inserted new row: ID ${id} for table ${table} (Product: ${productCode})`);
+    } catch (insertError) {
+      // Check if it's a duplicate key error
+      if (insertError.number === 2627 || insertError.number === 2601) {
+        console.error(`❌ Duplicate ID ${id} for table ${table} - Frontend should provide unique IDs`);
+        throw new Error(`Duplicate ID ${id} already exists for table ${table}. Please use a different ID.`);
+      }
+      throw insertError;
+    }
     
     const newId = id;
     console.log(`✅ Created suspend order item with ID: ${newId}`);
