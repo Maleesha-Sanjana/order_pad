@@ -6,6 +6,7 @@ import '../providers/database_data_provider.dart';
 import '../providers/auth_provider.dart';
 import '../models/suspend_order.dart';
 import '../models/cart_item.dart';
+import '../models/service_type.dart';
 import '../services/api_service.dart';
 import '../widgets/header_widget.dart';
 import '../widgets/order_table_widget.dart';
@@ -15,6 +16,7 @@ import '../widgets/breadcrumb_widget.dart';
 import '../widgets/content_widget.dart';
 import '../widgets/orders_view_widget.dart';
 import '../widgets/room_service_view_widget.dart';
+import '../widgets/takeaway_view_widget.dart';
 import '../widgets/service_type_dialog.dart';
 
 class WaiterDashboard extends StatefulWidget {
@@ -40,6 +42,19 @@ class _WaiterDashboardState extends State<WaiterDashboard> {
       // Also load menu data for compatibility
       context.read<MenuProvider>().loadMenuData();
     });
+  }
+
+  String _getServiceTypeName(String? serviceType) {
+    switch (serviceType) {
+      case 'takeaway':
+        return 'Takeaway';
+      case 'dineIn':
+        return 'DineIn';
+      case 'roomService':
+        return 'RoomService';
+      default:
+        return 'Orders';
+    }
   }
 
   @override
@@ -94,34 +109,34 @@ class _WaiterDashboardState extends State<WaiterDashboard> {
 
               const SizedBox(height: 8),
 
-              // Menu/Orders Toggle (hide for takeaway)
-              if (cart.serviceType?.name != 'takeaway')
+              // Menu/Orders Toggle (show for all service types)
+              if (cart.serviceType != null)
                 MenuToggleWidget(
                   isMenuMode: _isMenuMode,
                   onToggle: (isMenu) => setState(() => _isMenuMode = isMenu),
-                  isRoomService: cart.serviceType?.name == 'roomService',
+                  serviceTypeName: _getServiceTypeName(cart.serviceType?.name),
                 ),
 
               const SizedBox(height: 4),
 
-              // Search Bar (show in menu mode or takeaway)
-              if (_isMenuMode || cart.serviceType?.name == 'takeaway')
-                const SearchBarWidget(),
+              // Search Bar (show in menu mode)
+              if (_isMenuMode) const SearchBarWidget(),
 
               const SizedBox(height: 2),
 
-              // Breadcrumb (show in menu mode or takeaway)
-              if (_isMenuMode || cart.serviceType?.name == 'takeaway')
-                const BreadcrumbWidget(),
+              // Breadcrumb (show in menu mode)
+              if (_isMenuMode) const BreadcrumbWidget(),
 
               const SizedBox(height: 2),
 
               // Content Section
               Expanded(
-                child: _isMenuMode || cart.serviceType?.name == 'takeaway'
+                child: _isMenuMode
                     ? const ContentWidget()
                     : cart.serviceType?.name == 'roomService'
                     ? const RoomServiceViewWidget()
+                    : cart.serviceType?.name == 'takeaway'
+                    ? const TakeawayViewWidget()
                     : const OrdersViewWidget(),
               ),
             ],
@@ -291,11 +306,13 @@ class _WaiterDashboardState extends State<WaiterDashboard> {
     List<Map<String, dynamic>> tables = [];
     List<Map<String, dynamic>> chairs = [];
     List<Map<String, dynamic>> rooms = [];
-    
+
     // Pre-populate with existing values if adding to an existing order
     String? selectedTable = cart.tableNumber;
     String? selectedChair;
-    String? selectedRoom = cart.serviceType?.name == 'roomService' ? cart.tableNumber : null;
+    String? selectedRoom = cart.serviceType?.name == 'roomService'
+        ? cart.tableNumber
+        : null;
     String? previousTable; // Track previous value
     String? previousRoom; // Track previous value
     bool isLoadingTables = true;
@@ -309,7 +326,7 @@ class _WaiterDashboardState extends State<WaiterDashboard> {
         builder: (context, setState) {
           // Check if adding to existing order (before using it)
           final isAddingToExistingOrder = cart.existingItemsCount > 0;
-          
+
           // Load data based on service type
           if (cart.serviceType?.name == 'roomService') {
             // Load rooms for room service
@@ -405,11 +422,18 @@ class _WaiterDashboardState extends State<WaiterDashboard> {
                           decoration: BoxDecoration(
                             color: Colors.green.shade50,
                             borderRadius: BorderRadius.circular(12),
-                            border: Border.all(color: Colors.green.shade300, width: 2),
+                            border: Border.all(
+                              color: Colors.green.shade300,
+                              width: 2,
+                            ),
                           ),
                           child: Row(
                             children: [
-                              Icon(Icons.add_circle_outline, color: Colors.green.shade700, size: 24),
+                              Icon(
+                                Icons.add_circle_outline,
+                                color: Colors.green.shade700,
+                                size: 24,
+                              ),
                               const SizedBox(width: 8),
                               Expanded(
                                 child: Column(
@@ -439,9 +463,9 @@ class _WaiterDashboardState extends State<WaiterDashboard> {
                         const SizedBox(height: 16),
                       ],
                       Text(
-                        isAddingToExistingOrder 
-                          ? 'Only new items will be sent to kitchen:'
-                          : 'Please provide the following details to complete the order:',
+                        isAddingToExistingOrder
+                            ? 'Only new items will be sent to kitchen:'
+                            : 'Please provide the following details to complete the order:',
                         style: const TextStyle(fontSize: 14),
                       ),
                       const SizedBox(height: 20),
@@ -528,32 +552,42 @@ class _WaiterDashboardState extends State<WaiterDashboard> {
                                   ),
                                 )
                               : isAddingToExistingOrder
-                                  // Show disabled field with existing room when adding to existing order
-                                  ? Container(
-                                      padding: const EdgeInsets.all(16),
-                                      decoration: BoxDecoration(
-                                        color: Colors.grey.shade100,
-                                        borderRadius: BorderRadius.circular(12),
-                                        border: Border.all(color: Colors.grey.shade300),
+                              // Show disabled field with existing room when adding to existing order
+                              ? Container(
+                                  padding: const EdgeInsets.all(16),
+                                  decoration: BoxDecoration(
+                                    color: Colors.grey.shade100,
+                                    borderRadius: BorderRadius.circular(12),
+                                    border: Border.all(
+                                      color: Colors.grey.shade300,
+                                    ),
+                                  ),
+                                  child: Row(
+                                    children: [
+                                      Icon(
+                                        Icons.bed,
+                                        color: Colors.grey.shade600,
+                                        size: 18,
                                       ),
-                                      child: Row(
-                                        children: [
-                                          Icon(Icons.bed, color: Colors.grey.shade600, size: 18),
-                                          const SizedBox(width: 8),
-                                          Text(
-                                            'Room: $selectedRoom (Locked)',
-                                            style: TextStyle(
-                                              fontSize: 14,
-                                              color: Colors.grey.shade700,
-                                              fontWeight: FontWeight.w600,
-                                            ),
-                                          ),
-                                          const Spacer(),
-                                          Icon(Icons.lock, color: Colors.grey.shade500, size: 16),
-                                        ],
+                                      const SizedBox(width: 8),
+                                      Text(
+                                        'Room: $selectedRoom (Locked)',
+                                        style: TextStyle(
+                                          fontSize: 14,
+                                          color: Colors.grey.shade700,
+                                          fontWeight: FontWeight.w600,
+                                        ),
                                       ),
-                                    )
-                                  : DropdownButtonFormField<String>(
+                                      const Spacer(),
+                                      Icon(
+                                        Icons.lock,
+                                        color: Colors.grey.shade500,
+                                        size: 16,
+                                      ),
+                                    ],
+                                  ),
+                                )
+                              : DropdownButtonFormField<String>(
                                   value: selectedRoom,
                                   decoration: InputDecoration(
                                     labelText: 'Room *',
@@ -733,7 +767,7 @@ class _WaiterDashboardState extends State<WaiterDashboard> {
                                 ),
                         ),
                       ] else ...[
-                        // Table Selection for Dine-in/Takeaway
+                        // Table Selection for Dine-in and Takeaway
                         Container(
                           decoration: BoxDecoration(
                             border: Border.all(color: Colors.grey.shade300),
@@ -757,32 +791,42 @@ class _WaiterDashboardState extends State<WaiterDashboard> {
                                   ),
                                 )
                               : isAddingToExistingOrder
-                                  // Show disabled field with existing table when adding to existing order
-                                  ? Container(
-                                      padding: const EdgeInsets.all(16),
-                                      decoration: BoxDecoration(
-                                        color: Colors.grey.shade100,
-                                        borderRadius: BorderRadius.circular(12),
-                                        border: Border.all(color: Colors.grey.shade300),
+                              // Show disabled field with existing table when adding to existing order
+                              ? Container(
+                                  padding: const EdgeInsets.all(16),
+                                  decoration: BoxDecoration(
+                                    color: Colors.grey.shade100,
+                                    borderRadius: BorderRadius.circular(12),
+                                    border: Border.all(
+                                      color: Colors.grey.shade300,
+                                    ),
+                                  ),
+                                  child: Row(
+                                    children: [
+                                      Icon(
+                                        Icons.table_restaurant,
+                                        color: Colors.grey.shade600,
+                                        size: 18,
                                       ),
-                                      child: Row(
-                                        children: [
-                                          Icon(Icons.table_restaurant, color: Colors.grey.shade600, size: 18),
-                                          const SizedBox(width: 8),
-                                          Text(
-                                            'Table: $selectedTable (Locked)',
-                                            style: TextStyle(
-                                              fontSize: 14,
-                                              color: Colors.grey.shade700,
-                                              fontWeight: FontWeight.w600,
-                                            ),
-                                          ),
-                                          const Spacer(),
-                                          Icon(Icons.lock, color: Colors.grey.shade500, size: 16),
-                                        ],
+                                      const SizedBox(width: 8),
+                                      Text(
+                                        'Table: $selectedTable (Locked)',
+                                        style: TextStyle(
+                                          fontSize: 14,
+                                          color: Colors.grey.shade700,
+                                          fontWeight: FontWeight.w600,
+                                        ),
                                       ),
-                                    )
-                                  : DropdownButtonFormField<String>(
+                                      const Spacer(),
+                                      Icon(
+                                        Icons.lock,
+                                        color: Colors.grey.shade500,
+                                        size: 16,
+                                      ),
+                                    ],
+                                  ),
+                                )
+                              : DropdownButtonFormField<String>(
                                   value: selectedTable,
                                   decoration: InputDecoration(
                                     labelText: 'Table *',
@@ -1131,7 +1175,7 @@ class _WaiterDashboardState extends State<WaiterDashboard> {
                       );
                       return;
                     }
-                    
+
                     // Only check if room is occupied when creating NEW order (not adding to existing)
                     if (!isAddingToExistingOrder) {
                       final selectedRoomData = rooms.firstWhere(
@@ -1165,7 +1209,7 @@ class _WaiterDashboardState extends State<WaiterDashboard> {
                       }
                     }
                   } else {
-                    // Validate table and chair selection for dine-in/takeaway
+                    // Validate table and chair selection for dine-in and takeaway
                     if (selectedTable == null) {
                       ScaffoldMessenger.of(context).showSnackBar(
                         const SnackBar(
@@ -1177,7 +1221,9 @@ class _WaiterDashboardState extends State<WaiterDashboard> {
                     }
 
                     // Only check if table is occupied when creating NEW order (not adding to existing)
-                    if (!isAddingToExistingOrder) {
+                    // Skip occupied check for takeaway orders
+                    if (!isAddingToExistingOrder &&
+                        cart.serviceType?.name != 'takeaway') {
                       final selectedTableData = tables.firstWhere(
                         (table) => table['TableCode'] == selectedTable,
                         orElse: () => {},
@@ -1223,7 +1269,7 @@ class _WaiterDashboardState extends State<WaiterDashboard> {
                   Navigator.of(context).pop();
 
                   // Capture only NEW items (skip existing items)
-                  final cartItems = cart.existingItemsCount > 0 
+                  final cartItems = cart.existingItemsCount > 0
                       ? List.from(cart.newItems) // Only new items
                       : List.from(cart.items); // All items if new order
                   final isAddingToExisting = cart.existingItemsCount > 0;
@@ -1244,14 +1290,21 @@ class _WaiterDashboardState extends State<WaiterDashboard> {
                   String receiptNumber = '100000001'; // Default fallback
                   String? unitPart;
                   String? counterPart;
-                  
-                  if (cart.existingReceiptNo != null && cart.existingReceiptNo!.isNotEmpty) {
+
+                  if (cart.existingReceiptNo != null &&
+                      cart.existingReceiptNo!.isNotEmpty) {
                     receiptNumber = cart.existingReceiptNo!;
-                    print('🔄 Using existing receipt number for adding items: $receiptNumber');
-                    print('📋 Existing items in cart: ${cart.existingItemsCount}');
+                    print(
+                      '🔄 Using existing receipt number for adding items: $receiptNumber',
+                    );
+                    print(
+                      '📋 Existing items in cart: ${cart.existingItemsCount}',
+                    );
                     print('📋 Total items in cart: ${cart.items.length}');
                     print('📋 NEW items to send: ${cartItems.length}');
-                    print('⚠️ Will NOT increment sysconfig.ReceiptNo (reusing existing receipt)');
+                    print(
+                      '⚠️ Will NOT increment sysconfig.ReceiptNo (reusing existing receipt)',
+                    );
                   } else {
                     // Generate new receipt number from sysconfig (combines Unit + ReceiptNo)
                     try {
@@ -1260,7 +1313,9 @@ class _WaiterDashboardState extends State<WaiterDashboard> {
                           await ApiService.generateReceiptNumber('temp');
                       print('📊 Receipt API response: $receiptResult');
                       print('📊 Response type: ${receiptResult.runtimeType}');
-                      print('📊 Receipt No from API: ${receiptResult['receiptNo']}');
+                      print(
+                        '📊 Receipt No from API: ${receiptResult['receiptNo']}',
+                      );
                       print('📊 Unit from API: ${receiptResult['unit']}');
                       print('📊 Counter from API: ${receiptResult['counter']}');
 
@@ -1269,10 +1324,16 @@ class _WaiterDashboardState extends State<WaiterDashboard> {
                         receiptNumber = receiptResult['receiptNo'].toString();
                         unitPart = receiptResult['unit']?.toString();
                         counterPart = receiptResult['counter']?.toString();
-                        print('✅ Using receipt number from API: $receiptNumber');
-                        print('✅ This combines sysconfig.Unit ($unitPart) + sysconfig.ReceiptNo ($counterPart)');
+                        print(
+                          '✅ Using receipt number from API: $receiptNumber',
+                        );
+                        print(
+                          '✅ This combines sysconfig.Unit ($unitPart) + sysconfig.ReceiptNo ($counterPart)',
+                        );
                       } else {
-                        print('⚠️ API returned success=false or null receiptNo');
+                        print(
+                          '⚠️ API returned success=false or null receiptNo',
+                        );
                         print('⚠️ Full response: $receiptResult');
                         print('⚠️ Using default fallback: $receiptNumber');
                       }
@@ -1280,7 +1341,9 @@ class _WaiterDashboardState extends State<WaiterDashboard> {
                       print('❌ Error generating receipt number: $e');
                       print('❌ Error type: ${e.runtimeType}');
                       print('❌ Error details: ${e.toString()}');
-                      print('❌ Using default fallback receipt number: $receiptNumber');
+                      print(
+                        '❌ Using default fallback receipt number: $receiptNumber',
+                      );
                     }
                   }
 
@@ -1310,9 +1373,9 @@ class _WaiterDashboardState extends State<WaiterDashboard> {
                         mainAxisSize: MainAxisSize.min,
                         children: [
                           Text(
-                            isAddingToExisting 
-                              ? '$existingItemsCount existing items + ${cartItems.length} new items sent to kitchen!'
-                              : 'Your order has been sent to the kitchen successfully.',
+                            isAddingToExisting
+                                ? '$existingItemsCount existing items + ${cartItems.length} new items sent to kitchen!'
+                                : 'Your order has been sent to the kitchen successfully.',
                             textAlign: TextAlign.center,
                           ),
                           const SizedBox(height: 12),
@@ -1322,7 +1385,9 @@ class _WaiterDashboardState extends State<WaiterDashboard> {
                               color: theme.colorScheme.primary.withOpacity(0.1),
                               borderRadius: BorderRadius.circular(8),
                               border: Border.all(
-                                color: theme.colorScheme.primary.withOpacity(0.3),
+                                color: theme.colorScheme.primary.withOpacity(
+                                  0.3,
+                                ),
                               ),
                             ),
                             child: Column(
@@ -1331,7 +1396,8 @@ class _WaiterDashboardState extends State<WaiterDashboard> {
                                   'Receipt Number',
                                   style: TextStyle(
                                     fontSize: 12,
-                                    color: theme.colorScheme.primary.withOpacity(0.7),
+                                    color: theme.colorScheme.primary
+                                        .withOpacity(0.7),
                                   ),
                                 ),
                                 const SizedBox(height: 4),
@@ -1344,13 +1410,15 @@ class _WaiterDashboardState extends State<WaiterDashboard> {
                                     letterSpacing: 2,
                                   ),
                                 ),
-                                if (unitPart != null && counterPart != null) ...[
+                                if (unitPart != null &&
+                                    counterPart != null) ...[
                                   const SizedBox(height: 4),
                                   Text(
                                     'Unit: $unitPart | Counter: $counterPart',
                                     style: TextStyle(
                                       fontSize: 11,
-                                      color: theme.colorScheme.onSurface.withOpacity(0.6),
+                                      color: theme.colorScheme.onSurface
+                                          .withOpacity(0.6),
                                     ),
                                   ),
                                 ],
@@ -1409,6 +1477,7 @@ class _WaiterDashboardState extends State<WaiterDashboard> {
                     customerName,
                     roomNumber,
                     receiptNumber,
+                    serviceType, // Pass service type to background processing
                   );
                 },
                 style: ElevatedButton.styleFrom(
@@ -1435,6 +1504,7 @@ class _WaiterDashboardState extends State<WaiterDashboard> {
     String? customerName,
     String? roomNumber,
     String receiptNumber,
+    ServiceType? serviceType, // Add service type parameter
   ) async {
     print('🔄 Starting background order processing...');
     print('📋 Cart items to send (NEW ITEMS ONLY): ${cartItems.length}');
@@ -1442,7 +1512,9 @@ class _WaiterDashboardState extends State<WaiterDashboard> {
     print('🪑 Chair: $chairNumber');
     print('👤 Customer: $customerName');
     print('🧾 Receipt Number: $receiptNumber');
-    print('🖨️ KotPrint Status: All ${cartItems.length} items will have KotPrint=1 (NEW ITEMS for kitchen)');
+    print(
+      '🖨️ KotPrint Status: All ${cartItems.length} items will have KotPrint=1 (NEW ITEMS for kitchen)',
+    );
 
     if (cartItems.isEmpty) {
       print('❌ No cart items to process!');
@@ -1459,19 +1531,19 @@ class _WaiterDashboardState extends State<WaiterDashboard> {
 
       // Check if table has existing items and get max ID + receipt number
       final tableOrRoom = roomNumber ?? tableNumber;
-      
+
       // Check if this is adding to existing order or new order
       final existingItemsCount = cartProvider.existingItemsCount;
       final isAddingToExistingOrder = existingItemsCount > 0;
-      
+
       print('📊 Total items in cart: ${cartItems.length}');
       print('📊 Existing items count: $existingItemsCount');
       print('📊 Is adding to existing order: $isAddingToExistingOrder');
-      
+
       int startingId = 1;
       String? existingReceiptNo = cartProvider.existingReceiptNo;
       List<CartItem> itemsToSave;
-      
+
       if (isAddingToExistingOrder) {
         // Adding to existing order - only save NEW items
         itemsToSave = cartProvider.newItems;
@@ -1480,15 +1552,17 @@ class _WaiterDashboardState extends State<WaiterDashboard> {
         print('   - Existing items count: ${cartProvider.existingItemsCount}');
         print('   - NEW items to save: ${itemsToSave.length}');
         print('   - Existing ReceiptNo: ${cartProvider.existingReceiptNo}');
-        
+
         if (itemsToSave.isEmpty) {
           print('⚠️ No new items to save - only existing items in cart');
           return;
         }
-        
+
         // Debug: Show what we're about to save
         for (int i = 0; i < itemsToSave.length; i++) {
-          print('   NEW Item ${i+1}: ${itemsToSave[i].foodItem.name} x${itemsToSave[i].quantity}');
+          print(
+            '   NEW Item ${i + 1}: ${itemsToSave[i].foodItem.name} x${itemsToSave[i].quantity}',
+          );
         }
       } else {
         // New order - save ALL items
@@ -1496,19 +1570,24 @@ class _WaiterDashboardState extends State<WaiterDashboard> {
         print('📊 NEW ORDER MODE:');
         print('   - ALL items to save: ${itemsToSave.length}');
       }
-      
+
       try {
-        final existingItems = await ApiService.getSuspendOrdersByTable(tableOrRoom);
+        final existingItems = await ApiService.getSuspendOrdersByTable(
+          tableOrRoom,
+        );
         if (existingItems.isNotEmpty) {
           // Get max ID from database to continue sequence
-          final maxId = existingItems.map((item) => item.id ?? 0).reduce((a, b) => a > b ? a : b);
+          final maxId = existingItems
+              .map((item) => item.id ?? 0)
+              .reduce((a, b) => a > b ? a : b);
           startingId = maxId + 1;
-          
+
           // Get receipt number from existing items
-          if (existingReceiptNo == null && existingItems.first.receiptNo != null) {
+          if (existingReceiptNo == null &&
+              existingItems.first.receiptNo != null) {
             existingReceiptNo = existingItems.first.receiptNo;
           }
-          
+
           print('📋 DATABASE CHECK:');
           print('   - Existing items in database: ${existingItems.length}');
           print('   - Max ID in database: $maxId');
@@ -1516,11 +1595,13 @@ class _WaiterDashboardState extends State<WaiterDashboard> {
           if (existingReceiptNo != null) {
             print('   - Using existing ReceiptNo: $existingReceiptNo');
           }
-          
+
           // Debug: Show existing items
           print('   - Existing items in DB:');
           for (var item in existingItems) {
-            print('     ID=${item.id}, Product=${item.productDescription}, Qty=${item.qty}');
+            print(
+              '     ID=${item.id}, Product=${item.productDescription}, Qty=${item.qty}',
+            );
           }
         } else {
           print('✅ New order - IDs will start from: 1');
@@ -1544,8 +1625,21 @@ class _WaiterDashboardState extends State<WaiterDashboard> {
         print('🔢 Database ID: $orderId (KotPrint=1 for NEW items)');
 
         // Determine batch number based on service type
-        final batchNumber = roomNumber != null ? 'RoomService' : 'DineIn';
-        
+        String batchNumber;
+        if (roomNumber != null) {
+          batchNumber = 'RoomService';
+        } else if (serviceType?.name == 'takeaway') {
+          batchNumber = 'Takeaway';
+        } else {
+          batchNumber = 'DineIn';
+        }
+
+        // Debug logging
+        print('🔍 Service Type Debug:');
+        print('   - roomNumber: $roomNumber');
+        print('   - serviceType?.name: ${serviceType?.name}');
+        print('   - Final batchNumber: $batchNumber');
+
         final suspendOrder = SuspendOrder(
           id: orderId,
           productCode: cartItem.foodItem.id,
@@ -1557,8 +1651,10 @@ class _WaiterDashboardState extends State<WaiterDashboard> {
           wholeSalePrice: cartItem.foodItem.price * 0.85,
           qty: cartItem.quantity.toDouble(),
           amount: cartItem.totalPrice,
-          batchNo: batchNumber, // Set based on service type: RoomService or DineIn
-          receiptNo: existingReceiptNo, // Use existing receipt number if adding to table
+          batchNo:
+              batchNumber, // Set based on service type: RoomService, Takeaway, or DineIn
+          receiptNo:
+              existingReceiptNo, // Use existing receipt number if adding to table
           salesMan: authProvider.salesmanName.isNotEmpty
               ? authProvider.salesmanName
               : authProvider.salesmanCode,
@@ -1580,7 +1676,9 @@ class _WaiterDashboardState extends State<WaiterDashboard> {
         print('   - Qty: ${suspendOrder.qty}');
         print('   - Amount: ${suspendOrder.amount}');
         print('   - BatchNo: ${suspendOrder.batchNo}');
-        print('   - ReceiptNo: ${suspendOrder.receiptNo ?? "NULL (will be assigned)"}');
+        print(
+          '   - ReceiptNo: ${suspendOrder.receiptNo ?? "NULL (will be assigned)"}',
+        );
         print('   - SalesMan: ${suspendOrder.salesMan}');
         print('   - Table/Room: ${suspendOrder.table}');
         print('   - Chair: ${suspendOrder.chair}');

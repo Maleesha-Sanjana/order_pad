@@ -122,7 +122,6 @@ class OrderTableWidget extends StatelessWidget {
                     Expanded(flex: 1, child: _buildTableHeader('Pri.')),
                     Expanded(flex: 1, child: _buildTableHeader('Qty')),
                     Expanded(flex: 1, child: _buildTableHeader('Dis')),
-                    Expanded(flex: 1, child: _buildTableHeader('Ser.')),
                     Expanded(flex: 1, child: _buildTableHeader('Tot')),
                     Expanded(flex: 1, child: _buildTableHeader('Del')),
                   ],
@@ -243,9 +242,7 @@ class OrderTableWidget extends StatelessWidget {
                       style: TextStyle(
                         fontSize: 11,
                         color: isExisting ? Colors.blue : null,
-                        fontWeight: isExisting
-                            ? FontWeight.bold
-                            : FontWeight.normal,
+                        fontWeight: FontWeight.bold,
                       ),
                     ),
                   ],
@@ -259,9 +256,7 @@ class OrderTableWidget extends StatelessWidget {
                   style: TextStyle(
                     fontSize: 11,
                     color: isExisting ? Colors.blue.shade700 : null,
-                    fontWeight: isExisting
-                        ? FontWeight.w600
-                        : FontWeight.normal,
+                    fontWeight: FontWeight.bold,
                   ),
                 ),
               ),
@@ -273,6 +268,7 @@ class OrderTableWidget extends StatelessWidget {
                   style: TextStyle(
                     fontSize: 11,
                     color: isExisting ? Colors.blue : null,
+                    fontWeight: FontWeight.bold,
                   ),
                 ),
               ),
@@ -284,6 +280,7 @@ class OrderTableWidget extends StatelessWidget {
                   style: TextStyle(
                     fontSize: 11,
                     color: isExisting ? Colors.blue : null,
+                    fontWeight: FontWeight.bold,
                   ),
                 ),
               ),
@@ -295,17 +292,7 @@ class OrderTableWidget extends StatelessWidget {
                   style: TextStyle(
                     fontSize: 11,
                     color: isExisting ? Colors.blue : null,
-                  ),
-                ),
-              ),
-              Expanded(
-                flex: 1,
-                child: Text(
-                  '${(item.totalPrice * 0.10).toStringAsFixed(0)}',
-                  textAlign: TextAlign.right,
-                  style: TextStyle(
-                    fontSize: 11,
-                    color: isExisting ? Colors.blue : null,
+                    fontWeight: FontWeight.bold,
                   ),
                 ),
               ),
@@ -317,6 +304,7 @@ class OrderTableWidget extends StatelessWidget {
                   style: TextStyle(
                     fontSize: 11,
                     color: isExisting ? Colors.blue : null,
+                    fontWeight: FontWeight.bold,
                   ),
                 ),
               ),
