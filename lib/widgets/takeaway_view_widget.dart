@@ -6,8 +6,8 @@ import '../models/suspend_order.dart';
 import '../models/service_type.dart';
 import '../models/food_item.dart';
 
-class RoomServiceViewWidget extends StatelessWidget {
-  const RoomServiceViewWidget({super.key});
+class TakeawayViewWidget extends StatelessWidget {
+  const TakeawayViewWidget({super.key});
 
   @override
   Widget build(BuildContext context) {
@@ -23,23 +23,22 @@ class RoomServiceViewWidget extends StatelessWidget {
           });
         }
 
-        // Filter room orders (starting with "R") and BatchNo = 'RoomService'
-        final roomOrders = databaseData.suspendOrders
-            .where((order) => 
-                order.table.startsWith('R') || 
-                order.batchNo == 'RoomService')
+        // Filter takeaway orders ONLY by BatchNo = 'Takeaway'
+        // This ensures complete separation between Takeaway and DineIn sections
+        final takeawayOrders = databaseData.suspendOrders
+            .where((order) => order.batchNo == 'Takeaway')
             .toList();
 
-        // Group orders by room
+        // Group orders by table number (similar to dine-in orders)
         final Map<String, List<SuspendOrder>> groupedOrders = {};
-        for (final order in roomOrders) {
+        for (final order in takeawayOrders) {
           if (!groupedOrders.containsKey(order.table)) {
             groupedOrders[order.table] = [];
           }
           groupedOrders[order.table]!.add(order);
         }
 
-        final unpaidRooms = groupedOrders.keys.toList()..sort();
+        final unpaidTables = groupedOrders.keys.toList()..sort();
 
         return Container(
           padding: const EdgeInsets.all(16),
@@ -49,10 +48,14 @@ class RoomServiceViewWidget extends StatelessWidget {
               // Header
               Row(
                 children: [
-                  Icon(Icons.hotel, color: theme.colorScheme.primary, size: 28),
+                  Icon(
+                    Icons.shopping_bag,
+                    color: theme.colorScheme.primary,
+                    size: 28,
+                  ),
                   const SizedBox(width: 12),
                   Text(
-                    'Unpaid Rooms',
+                    'Unpaid Takeaways',
                     style: theme.textTheme.headlineSmall?.copyWith(
                       fontWeight: FontWeight.bold,
                       color: theme.colorScheme.onSurface,
@@ -64,11 +67,8 @@ class RoomServiceViewWidget extends StatelessWidget {
                     onPressed: () {
                       databaseData.loadSuspendOrders();
                     },
-                    icon: Icon(
-                      Icons.refresh,
-                      color: theme.colorScheme.primary,
-                    ),
-                    tooltip: 'Refresh Rooms',
+                    icon: Icon(Icons.refresh, color: theme.colorScheme.primary),
+                    tooltip: 'Refresh Orders',
                   ),
                   const SizedBox(width: 8),
                   Container(
@@ -81,7 +81,7 @@ class RoomServiceViewWidget extends StatelessWidget {
                       borderRadius: BorderRadius.circular(12),
                     ),
                     child: Text(
-                      '${unpaidRooms.length}',
+                      '${unpaidTables.length}',
                       style: TextStyle(
                         color: theme.colorScheme.primary,
                         fontWeight: FontWeight.bold,
@@ -91,7 +91,7 @@ class RoomServiceViewWidget extends StatelessWidget {
                 ],
               ),
               const SizedBox(height: 20),
-              // Rooms Grid
+              // Orders Grid
               Expanded(
                 child: databaseData.isLoadingSuspendOrders
                     ? Center(
@@ -103,35 +103,41 @@ class RoomServiceViewWidget extends StatelessWidget {
                             ),
                             const SizedBox(height: 16),
                             Text(
-                              'Loading unpaid rooms...',
+                              'Loading takeaways...',
                               style: theme.textTheme.titleMedium?.copyWith(
-                                color: theme.colorScheme.onSurface.withOpacity(0.7),
+                                color: theme.colorScheme.onSurface.withOpacity(
+                                  0.7,
+                                ),
                               ),
                             ),
                           ],
                         ),
                       )
-                    : unpaidRooms.isEmpty
-                        ? Center(
-                            child: Column(
-                              mainAxisAlignment: MainAxisAlignment.center,
-                              children: [
-                                Icon(
-                                  Icons.hotel_outlined,
-                                  size: 64,
-                                  color: theme.colorScheme.onSurface.withOpacity(0.3),
-                                ),
-                                const SizedBox(height: 16),
-                                Text(
-                                  'No unpaid rooms',
-                                  style: theme.textTheme.titleLarge?.copyWith(
-                                    color: theme.colorScheme.onSurface.withOpacity(0.6),
-                                  ),
-                                  textAlign: TextAlign.center,
-                                ),
-                              ],
+                    : unpaidTables.isEmpty
+                    ? Center(
+                        child: Column(
+                          mainAxisAlignment: MainAxisAlignment.center,
+                          children: [
+                            Icon(
+                              Icons.shopping_bag_outlined,
+                              size: 64,
+                              color: theme.colorScheme.onSurface.withOpacity(
+                                0.3,
+                              ),
                             ),
-                          )
+                            const SizedBox(height: 16),
+                            Text(
+                              'No unpaid takeaways',
+                              style: theme.textTheme.titleLarge?.copyWith(
+                                color: theme.colorScheme.onSurface.withOpacity(
+                                  0.6,
+                                ),
+                              ),
+                              textAlign: TextAlign.center,
+                            ),
+                          ],
+                        ),
+                      )
                     : GridView.builder(
                         gridDelegate:
                             const SliverGridDelegateWithFixedCrossAxisCount(
@@ -140,19 +146,19 @@ class RoomServiceViewWidget extends StatelessWidget {
                               crossAxisSpacing: 16,
                               mainAxisSpacing: 16,
                             ),
-                        itemCount: unpaidRooms.length,
+                        itemCount: unpaidTables.length,
                         itemBuilder: (context, index) {
-                          final roomNumber = unpaidRooms[index];
-                          final roomOrders = groupedOrders[roomNumber] ?? [];
+                          final tableNumber = unpaidTables[index];
+                          final orders = groupedOrders[tableNumber] ?? [];
 
                           return Material(
                             color: Colors.transparent,
                             child: InkWell(
-                              onTap: () => _showRoomOrdersDialog(
+                              onTap: () => _showOrderDetailsDialog(
                                 context,
                                 theme,
-                                roomNumber,
-                                roomOrders,
+                                tableNumber,
+                                orders,
                                 databaseData,
                               ),
                               borderRadius: BorderRadius.circular(20),
@@ -162,18 +168,18 @@ class RoomServiceViewWidget extends StatelessWidget {
                                     begin: Alignment.topLeft,
                                     end: Alignment.bottomRight,
                                     colors: [
-                                      Colors.blue.shade100,
-                                      Colors.blue.shade50,
+                                      Colors.green.shade100,
+                                      Colors.green.shade50,
                                     ],
                                   ),
                                   borderRadius: BorderRadius.circular(20),
                                   border: Border.all(
-                                    color: Colors.blue.shade400,
+                                    color: Colors.green.shade400,
                                     width: 2,
                                   ),
                                   boxShadow: [
                                     BoxShadow(
-                                      color: Colors.blue.withOpacity(0.3),
+                                      color: Colors.green.withOpacity(0.3),
                                       blurRadius: 12,
                                       offset: const Offset(0, 6),
                                     ),
@@ -184,39 +190,42 @@ class RoomServiceViewWidget extends StatelessWidget {
                                   child: Column(
                                     mainAxisAlignment: MainAxisAlignment.center,
                                     children: [
-                                      // Room Icon
+                                      // Takeaway Icon
                                       Container(
                                         width: 50,
                                         height: 50,
                                         decoration: BoxDecoration(
-                                          color: Colors.blue.shade600,
-                                          borderRadius: BorderRadius.circular(12),
+                                          color: Colors.green.shade600,
+                                          borderRadius: BorderRadius.circular(
+                                            12,
+                                          ),
                                         ),
                                         child: Icon(
-                                          Icons.hotel,
+                                          Icons.shopping_bag,
                                           color: Colors.white,
                                           size: 24,
                                         ),
                                       ),
                                       const SizedBox(height: 8),
-                                      // Room Number
+                                      // Table Number
                                       Text(
-                                        'Room ${roomNumber.substring(1)}', // Remove "R" prefix
+                                        'Table ${tableNumber}',
                                         style: TextStyle(
-                                          fontSize: 16,
+                                          fontSize: 14,
                                           fontWeight: FontWeight.bold,
-                                          color: Colors.blue.shade800,
+                                          color: Colors.green.shade800,
                                         ),
                                         maxLines: 1,
                                         overflow: TextOverflow.ellipsis,
+                                        textAlign: TextAlign.center,
                                       ),
                                       const SizedBox(height: 2),
                                       // Item count
                                       Text(
-                                        '${roomOrders.length} ${roomOrders.length == 1 ? 'item' : 'items'}',
+                                        '${orders.length} ${orders.length == 1 ? 'item' : 'items'}',
                                         style: TextStyle(
                                           fontSize: 11,
-                                          color: Colors.blue.shade700,
+                                          color: Colors.green.shade700,
                                           fontWeight: FontWeight.w500,
                                         ),
                                         maxLines: 1,
@@ -238,15 +247,17 @@ class RoomServiceViewWidget extends StatelessWidget {
     );
   }
 
-  void _showRoomOrdersDialog(
+  void _showOrderDetailsDialog(
     BuildContext context,
     ThemeData theme,
-    String roomNumber,
-    List<SuspendOrder> roomOrders,
+    String tableNumber,
+    List<SuspendOrder> orders,
     DatabaseDataProvider databaseData,
   ) {
-    // Get the receipt number from the first order
-    final receiptNo = roomOrders.isNotEmpty ? roomOrders.first.receiptNo : '';
+    final firstOrder = orders.first;
+    final receiptNo = firstOrder.receiptNo?.isNotEmpty == true
+        ? firstOrder.receiptNo!
+        : null;
 
     showDialog(
       context: context,
@@ -254,24 +265,26 @@ class RoomServiceViewWidget extends StatelessWidget {
         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
         title: Row(
           children: [
-            Icon(Icons.hotel, color: theme.colorScheme.primary, size: 28),
-            const SizedBox(width: 12),
-            Expanded(
-              child: Text('Room ${roomNumber.substring(1)}'),
+            Icon(
+              Icons.shopping_bag,
+              color: theme.colorScheme.primary,
+              size: 28,
             ),
+            const SizedBox(width: 12),
+            Expanded(child: Text('Table $tableNumber')),
           ],
         ),
         content: Column(
           mainAxisSize: MainAxisSize.min,
           children: [
             Text(
-              'Add items to this room?',
+              'Add more items to this takeaway order?',
               style: TextStyle(fontSize: 16),
               textAlign: TextAlign.center,
             ),
             const SizedBox(height: 16),
             Text(
-              '${roomOrders.length} existing ${roomOrders.length == 1 ? 'item' : 'items'}',
+              '${orders.length} existing ${orders.length == 1 ? 'item' : 'items'}',
               style: TextStyle(
                 fontSize: 14,
                 color: theme.colorScheme.onSurface.withOpacity(0.6),
@@ -287,15 +300,18 @@ class RoomServiceViewWidget extends StatelessWidget {
           ElevatedButton.icon(
             onPressed: () {
               Navigator.of(dialogContext).pop();
-              
-              // Load existing orders into cart
-              final cartProvider = Provider.of<CartProvider>(context, listen: false);
-              
+
+              // Load existing orders into cart and mark them as existing
+              final cartProvider = Provider.of<CartProvider>(
+                context,
+                listen: false,
+              );
+
               // Clear cart first
               cartProvider.clearCart();
-              
+
               // Load existing items into cart (marked as read-only)
-              for (final order in roomOrders) {
+              for (final order in orders) {
                 final foodItem = FoodItem(
                   idx: order.id ?? 0,
                   productCode: order.productCode,
@@ -305,24 +321,26 @@ class RoomServiceViewWidget extends StatelessWidget {
                   subDepartmentCode: '',
                 );
                 cartProvider.addItem(
-                  foodItem, 
+                  foodItem,
                   quantity: order.qty.toInt(),
                   isExisting: true, // Mark as existing (read-only)
                 );
               }
-              
-              // Mark current items count as existing
-              cartProvider.setExistingItemsCount(roomOrders.length);
-              
+
+              // Mark current items count as existing (don't send to backend)
+              cartProvider.setExistingItemsCount(orders.length);
+
               // Set existing receipt number
-              cartProvider.setExistingReceiptNo(receiptNo);
-              
-              // Set room number
-              cartProvider.setCustomerInfo(tableNumber: roomNumber);
-              
-              // Set service type to room service
-              cartProvider.setServiceType(ServiceType.roomService);
-              
+              if (receiptNo != null) {
+                cartProvider.setExistingReceiptNo(receiptNo);
+              }
+
+              // Set table number
+              cartProvider.setCustomerInfo(tableNumber: firstOrder.table);
+
+              // Set service type to takeaway
+              cartProvider.setServiceType(ServiceType.takeaway);
+
               // Show notification
               ScaffoldMessenger.of(context).showSnackBar(
                 SnackBar(
@@ -332,7 +350,7 @@ class RoomServiceViewWidget extends StatelessWidget {
                       const SizedBox(width: 8),
                       Expanded(
                         child: Text(
-                          '${roomOrders.length} existing items loaded. Add new items now!',
+                          '${orders.length} existing items loaded. Add new items now!',
                         ),
                       ),
                     ],

@@ -23,9 +23,13 @@ class OrdersViewWidget extends StatelessWidget {
           });
         }
 
-        // Filter table orders (starting with "T")
+        // Filter table orders (starting with "T") but exclude Takeaway orders
+        // DineIn orders have BatchNo = 'DineIn'
         final tableOrders = databaseData.suspendOrders
-            .where((order) => order.table.startsWith('T'))
+            .where((order) => 
+                order.table.startsWith('T') && 
+                order.batchNo != 'Takeaway' && 
+                order.batchNo != 'RoomService')
             .toList();
 
         // Group orders by table
