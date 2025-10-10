@@ -1,6 +1,6 @@
 module.exports = {
   // Database Configuration
-  server: 'POS1', // External Windows SQL Server machine
+  server: '172.20.10.2', // External Windows SQL Server machine
   database: 'POS_SOLUTION',
   user: 'sa',
   password: 'jbs2014', // External Windows SQL Server password
