@@ -44,8 +44,9 @@ class CartProvider extends ChangeNotifier {
   }
 
   double get tax => 0.0; // No tax
-  double get serviceCharge => subtotal * 0.10; // 10% service charge
-  double get total => subtotal + serviceCharge;
+  double get serviceCharge => 0.0; // No service charge
+  double get total =>
+      subtotal; // Total is just the subtotal without service charge
   bool get isEmpty => _items.isEmpty;
 
   void addItem(

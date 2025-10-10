@@ -1384,10 +1384,23 @@ initializeWebSocket(server);
 
 // Start server
 server.listen(PORT, '0.0.0.0', () => {
+  const os = require('os');
+  const nets = os.networkInterfaces();
+  let serverIP = 'localhost';
+  
+  // Find the first non-internal IPv4 address
+  Object.keys(nets).forEach(name => {
+    nets[name].forEach(net => {
+      if (net.family === 'IPv4' && !net.internal) {
+        serverIP = net.address;
+      }
+    });
+  });
+  
   console.log(`🚀 Server running on http://0.0.0.0:${PORT}`);
   console.log(`📊 API endpoints available at http://localhost:${PORT}/api/`);
-  console.log(`📊 Network access available at http://172.20.10.3:${PORT}/api/`);
-  console.log(`🔌 WebSocket server available at ws://172.20.10.3:${PORT}/ws`);
+  console.log(`📊 Network access available at http://${serverIP}:${PORT}/api/`);
+  console.log(`🔌 WebSocket server available at ws://${serverIP}:${PORT}/ws`);
 });
 
 // Graceful shutdown
