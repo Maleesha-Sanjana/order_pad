@@ -1208,9 +1208,20 @@ app.post('/api/orders/confirm/:tableNumber', async (req, res) => {
       orderNumber = Date.now();
     }
     
+    // Check if table already has items with a ReceiptNo (existing unpaid order)
+    const existingReceiptCheck = suspendOrders.recordset.find(item => item.ReceiptNo != null && item.ReceiptNo !== '');
+    
     // Generate receipt number: both unit and counter from sysconfig
     let finalReceiptNo = receiptNo;
-    if (!finalReceiptNo) {
+    
+    // If a receiptNo already exists in the database for this table, use it (don't increment counter)
+    if (!finalReceiptNo && existingReceiptCheck && existingReceiptCheck.ReceiptNo) {
+      finalReceiptNo = existingReceiptCheck.ReceiptNo;
+      console.log(`♻️ Table ${tableNumber} already has ReceiptNo: ${finalReceiptNo}`);
+      console.log(`✅ Reusing existing receipt (NOT incrementing sysconfig.ReceiptNo)`);
+    }
+    // Only generate NEW receipt number if this is truly a new order
+    else if (!finalReceiptNo) {
       try {
         // Get both Unit and ReceiptNo from sysconfig (with NOLOCK to read latest value)
         const sysconfigResult = await pool.request().query(`SELECT Unit, ReceiptNo FROM sysconfig WITH (NOLOCK)`);
@@ -1225,17 +1236,17 @@ app.post('/api/orders/confirm/:tableNumber', async (req, res) => {
           
           // Combine: unit + counter (e.g., "1" + "00000001" = "100000001")
           finalReceiptNo = unit + receiptCounter;
-          console.log(`📋 Generated receipt number: ${finalReceiptNo} (unit: ${unit}, counter: ${receiptCounter})`);
+          console.log(`📋 NEW ORDER - Generated receipt number: ${finalReceiptNo} (unit: ${unit}, counter: ${receiptCounter})`);
           console.log(`📊 sysconfig.Unit raw value: ${unitValue} (type: ${typeof unitValue})`);
           console.log(`📊 sysconfig.ReceiptNo raw value: ${sysconfigResult.recordset[0].ReceiptNo}`);
           
-          // Increment sysconfig counter for next order
+          // Increment sysconfig counter for next order (ONLY for new orders)
           const nextCounter = counter + 1;
           await pool.request()
             .input('newReceiptNo', sql.Int, nextCounter)
             .query('UPDATE sysconfig SET ReceiptNo = @newReceiptNo');
           
-          console.log(`✅ Updated sysconfig ReceiptNo to: ${nextCounter}`);
+          console.log(`✅ NEW ORDER - Incremented sysconfig ReceiptNo from ${counter} to ${nextCounter}`);
         } else {
           finalReceiptNo = '100000001';
         }
@@ -1243,6 +1254,8 @@ app.post('/api/orders/confirm/:tableNumber', async (req, res) => {
         console.error('Error generating receipt number:', err);
         finalReceiptNo = `RCP${orderNumber}`;
       }
+    } else {
+      console.log(`✅ Using provided ReceiptNo: ${finalReceiptNo} (NOT incrementing counter)`);
     }
     
     // Update suspend orders with receipt number and mark as confirmed

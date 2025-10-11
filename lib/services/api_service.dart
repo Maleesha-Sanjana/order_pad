@@ -9,10 +9,16 @@ import '../models/salesman.dart';
 import '../models/suspend_order.dart';
 
 class ApiService {
-  // For Android emulator: use 10.0.2.2
-  // For physical device: use your Mac's IP address (172.20.10.2)
-  // For iOS simulator: use localhost
-  // Change this to your Mac's IP when running on physical device
+  // ============================================================
+  // 🔧 CONFIGURATION: Choose based on your testing environment
+  // ============================================================
+
+  // ✅ FOR iOS SIMULATOR (testing on Mac's simulator)
+  // static const String baseUrl = 'http://localhost:3000/api';
+
+  // ❌ FOR PHYSICAL DEVICE (iPhone/iPad via WiFi or USB)
+  // Uncomment the line below and comment the line above
+  // Make sure your Mac and iPhone are on the same WiFi network
   static const String baseUrl = 'http://172.20.10.2:3000/api';
 
   // Helper method to handle HTTP responses
