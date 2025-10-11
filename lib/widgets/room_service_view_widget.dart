@@ -56,22 +56,10 @@ class RoomServiceViewWidget extends StatelessWidget {
                     style: theme.textTheme.headlineSmall?.copyWith(
                       fontWeight: FontWeight.bold,
                       color: theme.colorScheme.onSurface,
-                    ),
-                  ),
-                  const Spacer(),
-                  // Refresh Button
-                  IconButton(
-                    onPressed: () {
-                      databaseData.loadSuspendOrders();
-                    },
-                    icon: Icon(
-                      Icons.refresh,
-                      color: theme.colorScheme.primary,
-                    ),
-                    tooltip: 'Refresh Rooms',
-                  ),
-                  const SizedBox(width: 8),
-                  Container(
+                ),
+              ),
+              const Spacer(),
+              Container(
                     padding: const EdgeInsets.symmetric(
                       horizontal: 8,
                       vertical: 4,

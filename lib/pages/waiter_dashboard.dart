@@ -113,7 +113,15 @@ class _WaiterDashboardState extends State<WaiterDashboard> {
               if (cart.serviceType != null)
                 MenuToggleWidget(
                   isMenuMode: _isMenuMode,
-                  onToggle: (isMenu) => setState(() => _isMenuMode = isMenu),
+                  onToggle: (isMenu) {
+                    setState(() => _isMenuMode = isMenu);
+                    // Auto-refresh unpaid orders when switching to unpaid view
+                    if (!isMenu) {
+                      final databaseData = context.read<DatabaseDataProvider>();
+                      databaseData.loadSuspendOrders();
+                      print('🔄 Auto-refreshing unpaid orders on toggle');
+                    }
+                  },
                   serviceTypeName: _getServiceTypeName(cart.serviceType?.name),
                 ),
 
