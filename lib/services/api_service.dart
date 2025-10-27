@@ -10,10 +10,10 @@ import '../models/suspend_order.dart';
 
 class ApiService {
   // ✅ FOR iOS SIMULATOR (testing on Mac's simulator)
-  // static const String baseUrl = 'http://localhost:3000/api';
+  //static const String baseUrl = 'http://localhost:3000/api';
 
   // ❌ FOR PHYSICAL DEVICE (iPhone/iPad via WiFi or USB)
-  static const String baseUrl = 'http://172.18.225.26:3000/api';
+  static const String baseUrl = 'http://172.20.10.2:3000/api';
 
   // Helper method to handle HTTP responses
   static Map<String, dynamic> _handleResponse(http.Response response) {
